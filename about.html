@@ -324,7 +324,9 @@
       if (hash) {
         // หน่วงเวลาเล็กน้อยให้ CSS อนิเมชัน FadeUp โหลดเสร็จก่อน เบราว์เซอร์จะได้คำนวณตำแหน่งถูก
         setTimeout(() => {
-          const targetElement = document.querySelector(hash);
+          // ใช้ getElementById: #id ที่ขึ้นต้นด้วยตัวเลข/ภาษาไทย ทำให้ querySelector error
+          let targetElement = null;
+          try { targetElement = document.getElementById(decodeURIComponent(hash.slice(1))); } catch (e) { targetElement = null; }
           if (targetElement) {
             targetElement.scrollIntoView({ behavior: "smooth" });
           }

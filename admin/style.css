@@ -21,6 +21,10 @@
 button:focus, a:focus, .machine-card:focus {
   outline: none;
 }
+/* ใช้คีย์บอร์ด (Tab) ต้องเห็นว่าอยู่ปุ่มไหน — เมาส์/นิ้วแตะจะไม่ขึ้นกรอบ */
+button:focus-visible, a:focus-visible, .machine-card:focus-visible, [role="button"]:focus-visible {
+  outline: 2.5px solid var(--teal); outline-offset: 3px;
+}
 
 
 body {
@@ -833,8 +837,12 @@ body {
 .cloud-chip.connecting::before { animation: cloudPulse 1.2s ease-in-out infinite; }
 @keyframes cloudPulse { 50% { opacity: 0.3; } }
 
-/* ปุ่มดาวน์โหลด CSV: ใช้ emoji 📥 แทนไอคอน */
-.csv-btn { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-.csv-emoji { font-size: 0.95rem; line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; transition: transform 0.2s; }
-.csv-btn:hover .csv-emoji { transform: translateY(1px); }
+/* ปุ่มดาวน์โหลด CSV: ไอคอน SVG ลูกศรดาวน์โหลด (เส้นแบบเดียวกับไอคอนอื่นในธีม) */
+.csv-btn { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.csv-icon { width: 14px; height: 14px; flex-shrink: 0; transition: transform 0.2s; }
+.csv-btn:hover .csv-icon { transform: translateY(1px); }
 .csv-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ปุ่ม + ลอยต้องไม่ทับแถบเมนูล่าง และการ์ดเครื่องแถวสุดท้ายต้องเลื่อนพ้นปุ่มได้ */
+.fab { bottom: 104px; }
+#view-machines { padding-bottom: 76px; }

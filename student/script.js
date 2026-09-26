@@ -46,7 +46,7 @@ function getRemainingTime(machine) {
   const durationMs = (machine.duration || defaultDurationMins) * 60 * 1000;
   
   const endTime = startTime + durationMs;
-  const now = Date.now();
+  const now = wcuNow();
   const diff = endTime - now;
 
   if (diff <= 0) return { text: "00:00", isFinished: true }; 
@@ -102,12 +102,12 @@ function renderMachines(forceRender = false) {
           : (m.status === "broken" ? "เครื่องมีปัญหา" : timeData.text);
         
         return `
-          <div class="machine-card status-${m.status}" id="card-${m.uid}" data-status="${m.status}" onclick="openModal('${m.uid}')" style="animation-delay: ${index * 0.05}s">
+          <div class="machine-card status-${rfEsc(m.status)}" id="card-${rfEsc(m.uid)}" data-uid="${rfEsc(m.uid)}" data-status="${rfEsc(m.status)}" role="button" tabindex="0" aria-label="${rfEsc(`${CATEGORY_LABEL[m.category]} ${m.id} ${timeLabel}`)}" style="animation-delay: ${index * 0.05}s">
             <div class="card-icon">
               ${icon}
               <span class="status-dot" id="dot-${m.uid}">${statusIcon}</span>
             </div>
-            <p class="card-label">เครื่อง ${m.id}</p>
+            <p class="card-label">เครื่อง ${rfEsc(m.id)}</p>
             <p class="card-time" id="time-${m.uid}">${timeLabel}</p>
           </div>`;
       })
@@ -159,22 +159,24 @@ function openModal(uid) {
   }
 
   updateModalTimeUI(machine);
-
-  if (machine.status === "broken") {
-    modalActionBtn.disabled = true;
-    modalActionBtn.textContent = "เครื่องนี้แจ้งซ่อมไปแล้ว";
-    modalActionBtn.onclick = null; 
-  } else {
-    modalActionBtn.disabled = false;
-    modalActionBtn.textContent = "รายงานปัญหาเครื่องนี้";
-    modalActionBtn.onclick = () => {
-      closeModal();
-      showFeedback(machine.uid); // เปิดฟอร์มพร้อมเลือกเครื่องนี้ให้เลย
-    };
-  }
-
   modal.hidden = false;
 }
+
+// ปุ่ม "รายงานปัญหา" ต้องเปลี่ยนตามสถานะล่าสุด (เครื่องอาจถูกแจ้งซ่อม/ซ่อมเสร็จระหว่างที่เปิดหน้าต่างอยู่)
+function updateModalAction(machine) {
+  const broken = machine.status === "broken";
+  if (modalActionBtn.dataset.broken === String(broken)) return;
+  modalActionBtn.dataset.broken = String(broken);
+  modalActionBtn.disabled = broken;
+  modalActionBtn.textContent = broken ? "เครื่องนี้แจ้งซ่อมไปแล้ว" : "รายงานปัญหาเครื่องนี้";
+}
+modalActionBtn.addEventListener("click", () => {
+  const uid = activeModalUid;
+  const machine = wcuGetMachines().find((m) => m.uid === uid);
+  if (!machine || machine.status === "broken") return;
+  closeModal();
+  showFeedback(uid); // เปิดฟอร์มพร้อมเลือกเครื่องนี้ให้เลย
+});
 
 function closeModal() {
   modal.hidden = true;
@@ -182,6 +184,7 @@ function closeModal() {
 }
 
 function updateModalTimeUI(machine) {
+  updateModalAction(machine);
   if (machine.status === "available") {
     modalStatus.textContent = machine.category === "iron" ? "สถานะ: พร้อมเสียบใช้งาน" : "สถานะ: ว่างพร้อมใช้งาน";
     modalStatus.className = "modal-status-badge available";
@@ -204,6 +207,28 @@ function updateModalTimeUI(machine) {
 }
 
 modalClose.addEventListener("click", closeModal);
+
+// การ์ดเครื่อง: คลิก หรือกด Enter/Space
+const machineGrid = document.getElementById("machine-grid");
+machineGrid.addEventListener("click", (e) => {
+  const card = e.target.closest(".machine-card[data-uid]");
+  if (card) openModal(card.dataset.uid);
+});
+machineGrid.addEventListener("keydown", (e) => {
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches(".machine-card[data-uid]")) {
+    e.preventDefault();
+    openModal(e.target.dataset.uid);
+  }
+});
+
+// Esc ปิดหน้าต่างที่เปิดอยู่
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  const review = document.getElementById("review-modal");
+  if (review && !review.hidden) { review.hidden = true; return; }
+  if (!successModal.hidden) { successCloseBtn.click(); return; }
+  if (!modal.hidden) closeModal();
+});
 modal.addEventListener("click", (e) => {
   if (e.target === modal) closeModal();
 });

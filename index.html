@@ -489,6 +489,8 @@
           if (m.status === "busy" && m.sec != null) {
             if (m.demo && m.sec <= 0) return;
             m.sec = Math.max(0, m.sec - 1);
+            // เครื่องตัวอย่างอื่นๆ นับครบแล้ววนใหม่ (เดิมค้างที่ 00:00 ตลอด)
+            if (!m.demo && m.sec === 0) m.sec = m.total;
             if (!m.demo || m.sec > 0) renderTileTick(m);
           }
         });

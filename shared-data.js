@@ -18,6 +18,13 @@ function wcuLoadingText(emptyText) {
   return c.error ? "เชื่อมต่อฐานข้อมูลไม่ได้ ลองรีเฟรชหน้านี้อีกครั้ง" : "กำลังโหลดสถานะเครื่อง…";
 }
 
+/* เวลาปัจจุบันที่ทุกเครื่องใช้ร่วมกัน: โหมด Firebase จะปรับตามนาฬิกาเซิร์ฟเวอร์ (.info/serverTimeOffset)
+   กันมือถือที่ตั้งเวลาเพี้ยนนับถอยหลังผิด หรือจบรอบซักของคนอื่นก่อนเวลา */
+function wcuNow() {
+  const offset = typeof window !== "undefined" ? Number(window.WCU_TIME_OFFSET) || 0 : 0;
+  return Date.now() + offset;
+}
+
 /* เปิดโหมดออนไลน์ (Firebase) เมื่อมี config ครบใน firebase-config.js */
 function wcuCloudEnabled() {
   const c = typeof window !== "undefined" ? window.WCU_FIREBASE_CONFIG : null;
@@ -386,8 +393,10 @@ function wcuDeleteMachine(uid) {
 function wcuSetMachineStatus(uid, status) {
   const machines = wcuGet(WCU_KEYS.machines).map((m) => {
     if (m.uid !== uid) return m;
-    const next = { ...m, status, startedAt: status === "busy" ? Date.now() : null };
-    if (status !== "busy") delete next.needsRepair;
+    // เครื่องที่มีใบแจ้งซ่อมค้าง (needsRepair) ห้ามกลับเป็น "ว่าง" เช่น แอดมินกดหยุดทำงาน / ถอดปลั๊กเตารีด
+    const target = status === "available" && m.needsRepair ? "broken" : status;
+    const next = { ...m, status: target, startedAt: target === "busy" ? wcuNow() : null };
+    if (target !== "busy") delete next.needsRepair;
     return next;
   });
   wcuSet(WCU_KEYS.machines, machines);
@@ -529,7 +538,7 @@ function wcuStatusAfterWash(uid) {
 /* เครื่องซักที่ครบเวลาแล้วให้กลับเป็น "ว่าง" (หน้า demo เปิดทิ้งไว้ก็ทำงานต่อได้) */
 function wcuAutoFinishWashes() {
   let changed = false;
-  const now = Date.now();
+  const now = wcuNow();
   const machines = wcuGetMachines().map((m) => {
     if (m.category === "washer" && m.status === "busy" && m.startedAt && now - Number(m.startedAt) >= wcuMachineDurationMs(m)) {
       changed = true;
@@ -559,8 +568,41 @@ function wcuGetSampleSummary() {
   return { usageCount: usage.length, usageAmount: sum(usage), expenseCount: expenses.length, expenseAmount: sum(expenses) };
 }
 function wcuRemoveSampleData() {
+  const removed = wcuGetExpenses().filter(wcuIsSampleRecord).map((e) => e.id);
   wcuSet(WCU_KEYS.usage, wcuGetUsage().filter((u) => !wcuIsSampleRecord(u)));
   wcuSet(WCU_KEYS.expenses, wcuGetExpenses().filter((e) => !wcuIsSampleRecord(e)));
+  // ใบแจ้งซ่อมตัวอย่างที่ผูกกับค่าซ่อมตัวอย่าง: ตัดการผูกด้วย ไม่ให้ "ค่าซ่อมรวม" ค้างตัวเลขที่ลบไปแล้ว
+  removed.forEach((id) => wcuSyncReportsAfterExpenseChange(id, null, "ลบข้อมูลตัวอย่าง"));
+}
+
+/* รายจ่ายที่ผูกกับใบแจ้งซ่อม (ค่าซ่อม / เงินคืนนิสิต) ถูกแก้หรือลบจากหน้ารายจ่าย → อัปเดตใบแจ้งซ่อมให้ตรงกัน
+   updated = รายการที่แก้แล้ว หรือ null ถ้าถูกลบ */
+function wcuSyncReportsAfterExpenseChange(expenseId, updated, reason = "หน้ารายจ่าย") {
+  if (!expenseId) return 0;
+  const now = Date.now();
+  let count = 0;
+  const reports = wcuGet(WCU_KEYS.reports).map((r) => {
+    const log = Array.isArray(r.log) ? r.log.slice() : [];
+    let next = null;
+    if (r.expenseId === expenseId) {
+      count += 1;
+      if (updated) {
+        if (Number(r.repairCost) === updated.amount) return r;
+        next = { ...r, repairCost: updated.amount };
+        log.push(wcuLogEntry(`แก้ค่าซ่อมเป็น ฿${updated.amount.toLocaleString("th-TH")} (จาก${reason})`, "admin", now));
+      } else {
+        next = { ...r, repairCost: 0, expenseId: null };
+        log.push(wcuLogEntry(`ลบค่าซ่อมออก (จาก${reason})`, "admin", now));
+      }
+    } else if (r.refundExpenseId === expenseId && !updated) {
+      count += 1;
+      next = { ...r, refundStatus: "pending", refundedAt: null, refundExpenseId: null };
+      log.push(wcuLogEntry(`รายการคืนเงินถูกลบ (จาก${reason}) · คำขอคืนเงินกลับเป็นรอดำเนินการ`, "admin", now));
+    }
+    return next ? { ...next, log, updatedAt: now } : r;
+  });
+  if (count) wcuSet(WCU_KEYS.reports, reports);
+  return count;
 }
 
 /* ---------- expenses ledger ---------- */
@@ -621,7 +663,7 @@ function wcuDeleteExpense(id) {
 
 function wcuElapsedLabel(machine) {
   if (machine.status !== "busy" || !machine.startedAt) return "00:00:00";
-  const totalSeconds = Math.max(0, Math.floor((Date.now() - machine.startedAt) / 1000));
+  const totalSeconds = Math.max(0, Math.floor((wcuNow() - machine.startedAt) / 1000));
   const h = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
   const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
   const s = String(totalSeconds % 60).padStart(2, "0");
@@ -673,7 +715,13 @@ function wcuUpdateReport(id, patch) {
 function wcuReportPhotos(report) {
   if (!report) return [];
   const list = Array.isArray(report.photos) && report.photos.length ? report.photos : report.photo ? [report.photo] : [];
-  return list.map(wcuResolvePhoto).filter(Boolean);
+  // รับเฉพาะรูปแบบ data:image/... เท่านั้น (กันข้อมูลแปลกปลอมที่ถูกส่งเข้ามาถูกนำไปใส่ใน <img src>)
+  return list.map(wcuResolvePhoto).filter(wcuIsSafePhoto);
+}
+function wcuIsSafePhoto(src) {
+  return typeof src === "string" && (
+    /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(src) ||
+    /^data:image\/svg\+xml;charset=utf-8,[A-Za-z0-9\-_.!~*'()%]+$/.test(src));
 }
 /* โหมด Firebase: รูปไม่ได้เก็บใน localStorage (จุได้แค่ ~5MB) แต่เก็บในหน่วยความจำ แคชจึงเก็บเป็นตัวอ้างอิง "wcu-photo|id|ลำดับ" */
 function wcuResolvePhoto(src) {
@@ -719,7 +767,16 @@ function wcuClearSession() {
 /* ---------- helpers ---------- */
 
 function wcuNewId(prefix) {
-  return `${prefix}-${Date.now().toString(36)}${Math.floor(Math.random() * 900 + 100)}`;
+  // เวลา + สุ่ม 6 ตัว (กันรหัสชนกันเมื่อหลายเครื่องบันทึกพร้อมกันในโหมด Firebase)
+  let rand = "";
+  try {
+    const bytes = new Uint8Array(6);
+    crypto.getRandomValues(bytes);
+    rand = Array.from(bytes, (b) => (b % 36).toString(36)).join("");
+  } catch (e) {
+    rand = Math.random().toString(36).slice(2, 8).padEnd(6, "0");
+  }
+  return `${prefix}-${Date.now().toString(36)}${rand}`;
 }
 
 function wcuFormatDateThai(iso) {

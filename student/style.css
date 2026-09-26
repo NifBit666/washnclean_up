@@ -21,6 +21,10 @@
 button:focus, a:focus, .machine-card:focus {
   outline: none;
 }
+/* ใช้คีย์บอร์ด (Tab) ต้องเห็นว่าอยู่ปุ่มไหน — เมาส์/นิ้วแตะจะไม่ขึ้นกรอบ */
+button:focus-visible, a:focus-visible, .machine-card:focus-visible, [role="button"]:focus-visible {
+  outline: 2.5px solid var(--teal); outline-offset: 3px;
+}
 
 body {
   margin: 0;
@@ -120,6 +124,7 @@ body {
 .modal-card {
   background: #fff; width: 100%; max-width: 320px; border-radius: 24px;
   padding: 30px 24px; text-align: center; position: relative;
+  max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain;
   box-shadow: 0 20px 40px rgba(0,0,0,0.15); animation: modalPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 @keyframes modalPop { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
@@ -525,6 +530,8 @@ body {
 .ticket span { font-size: 0.72rem; color: var(--navy-soft); }
 .ticket strong { font-family: "Baloo 2", "IBM Plex Sans Thai", sans-serif; font-size: 1.5rem; letter-spacing: 0.04em; color: var(--teal-deep); }
 .ticket small { font-size: 0.74rem; color: var(--navy-soft); }
+.ticket small + small { display: block; margin-top: 4px; }
+.ticket small.warn { color: #b7791f; font-weight: 600; }
 
 @media (min-width: 768px) {
   #view-feedback { max-width: 620px; margin: 0 auto 40px; }

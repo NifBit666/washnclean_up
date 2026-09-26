@@ -150,7 +150,7 @@
             <h3>ประวัติการใช้งาน</h3>
             <span class="list-sub" id="rev-txn-count"></span>
           </div>
-          <button type="button" class="text-btn csv-btn" id="rev-export-btn" title="ดาวน์โหลดไฟล์ CSV (เปิดด้วย Excel / Google Sheets ได้)"><span class="csv-emoji" aria-hidden="true">📥</span>ดาวน์โหลด CSV</button>
+          <button type="button" class="text-btn csv-btn" id="rev-export-btn" title="ดาวน์โหลดไฟล์ CSV (เปิดด้วย Excel / Google Sheets ได้)"><svg class="csv-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>ดาวน์โหลด CSV</button>
         </div>
         <div class="txn-list" id="rev-txn-list"></div>
         <button type="button" class="more-btn" id="rev-txn-more" hidden>ดูเพิ่ม</button>
@@ -239,7 +239,7 @@
             <h3>รายการรายจ่าย</h3>
             <span class="list-sub" id="exp-list-count"></span>
           </div>
-          <button type="button" class="text-btn csv-btn" id="exp-export-btn" title="ดาวน์โหลดไฟล์ CSV (เปิดด้วย Excel / Google Sheets ได้)"><span class="csv-emoji" aria-hidden="true">📥</span>ดาวน์โหลด CSV</button>
+          <button type="button" class="text-btn csv-btn" id="exp-export-btn" title="ดาวน์โหลดไฟล์ CSV (เปิดด้วย Excel / Google Sheets ได้)"><svg class="csv-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>ดาวน์โหลด CSV</button>
         </div>
         <div class="filter-chips" id="exp-filter-chips" role="group" aria-label="กรองตามหมวด"></div>
         <div class="txn-list" id="exp-list"></div>
@@ -306,14 +306,14 @@
       <div class="rep-toolbar">
         <label class="rep-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input type="search" id="rep-search" placeholder="ค้นหาใบแจ้งซ่อม…" title="ค้นหาได้จากเลขเครื่อง รหัสนิสิต อาการ หมายเลขใบแจ้ง เบอร์ติดต่อ และบันทึกแอดมิน" aria-label="ค้นหาใบแจ้งซ่อม" autocomplete="off" />
+          <input type="search" id="rep-search" placeholder="ค้นหา…" title="ค้นหาได้จากเลขเครื่อง รหัสนิสิต อาการ หมายเลขใบแจ้ง เบอร์ติดต่อ และบันทึกแอดมิน" aria-label="ค้นหาใบแจ้งซ่อม" autocomplete="off" />
         </label>
         <select id="rep-sort" aria-label="เรียงลำดับ">
           <option value="newest">ใหม่สุดก่อน</option>
           <option value="oldest">รอนานสุดก่อน</option>
           <option value="severity">รุนแรงสุดก่อน</option>
         </select>
-        <button type="button" class="text-btn csv-btn" id="rep-export" title="ดาวน์โหลดใบแจ้งซ่อมทั้งหมดเป็นไฟล์ CSV (เปิดด้วย Excel / Google Sheets ได้)" aria-label="ดาวน์โหลดใบแจ้งซ่อมเป็นไฟล์ CSV"><span class="csv-emoji" aria-hidden="true">📥</span>CSV</button>
+        <button type="button" class="text-btn csv-btn" id="rep-export" title="ดาวน์โหลดใบแจ้งซ่อมทั้งหมดเป็นไฟล์ CSV (เปิดด้วย Excel / Google Sheets ได้)" aria-label="ดาวน์โหลดใบแจ้งซ่อมเป็นไฟล์ CSV"><svg class="csv-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>CSV</button>
       </div>
       <div class="filter-chips" id="report-filters" role="group" aria-label="กรองใบแจ้งซ่อม"></div>
       <div class="report-list" id="report-list"></div>
@@ -353,7 +353,7 @@
           <div class="form-grid-2">
             <label class="field">
               <span>หมายเลขเครื่อง</span>
-              <input type="text" id="edit-machine-id" required />
+              <input type="text" id="edit-machine-id" required maxlength="10" autocomplete="off" />
             </label>
             <label class="field">
               <span>เวลาทำงาน (นาที)</span>
@@ -424,7 +424,7 @@
           <div class="form-grid-2">
             <label class="field">
               <span>หมายเลขเครื่อง</span>
-              <input type="text" id="new-id" required />
+              <input type="text" id="new-id" required maxlength="10" autocomplete="off" />
             </label>
             <label class="field">
               <span>เวลาทำงาน (นาที)</span>

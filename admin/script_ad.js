@@ -70,13 +70,16 @@ function showToast(title, desc, type) {
     ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
     : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
 
+  // ข้อความเป็น text ล้วน (มีเลขเครื่อง/ข้อความจากผู้ใช้ปน) ห้ามแปลงเป็น HTML
   toast.innerHTML = `
     <div class="toast-icon">${iconSvg}</div>
     <div class="toast-content">
-      <span class="toast-title">${title}</span>
-      <p class="toast-desc">${desc}</p>
+      <span class="toast-title"></span>
+      <p class="toast-desc"></p>
     </div>
   `;
+  toast.querySelector(".toast-title").textContent = title == null ? "" : String(title);
+  toast.querySelector(".toast-desc").textContent = desc == null ? "" : String(desc);
   container.appendChild(toast);
   
   setTimeout(() => {
@@ -279,7 +282,7 @@ function getRemainingTime(machine) {
 
   const startTime = new Date(startStr).getTime();
   const durationMs = (machine.duration || 60) * 60 * 1000;
-  const diff = (startTime + durationMs) - Date.now();
+  const diff = (startTime + durationMs) - wcuNow();
 
   if (diff <= 0) return { text: "00:00", isFinished: true }; 
   const m = Math.floor(diff / 60000).toString().padStart(2, '0');
@@ -316,6 +319,10 @@ function renderMachinesGrid(forceRender = false) {
   });
 
   if (!forceRender && existingCards.length !== filteredList.length) forceRender = true;
+  // ชุดเครื่องเปลี่ยน (สลับเครื่อง / แก้เลขเครื่องจากอีกเครื่อง) ต้องวาดใหม่ ไม่ใช่แค่อัปเดตเวลา
+  const layoutSig = activeSegment + "|" + filteredList.map(m => `${m.uid}:${m.id}`).join(",");
+  if (container.dataset.sig !== layoutSig) forceRender = true;
+  container.dataset.sig = layoutSig;
 
   if (!forceRender) {
     filteredList.forEach(m => {
@@ -335,7 +342,8 @@ function renderMachinesGrid(forceRender = false) {
   }
 
   if (filteredList.length === 0) {
-    container.innerHTML = `<div class="empty-state">ไม่มี${CATEGORY_LABEL[activeSegment]}ในระบบ</div>`;
+    container.innerHTML = `<div class="empty-state">${escapeHtml(wcuLoadingText(activeSegment === "broken" ? "ไม่มีเครื่องที่มีปัญหา 🎉" : `ไม่มี${CATEGORY_LABEL[activeSegment]}ในระบบ`))}</div>`;
+    container.dataset.sig = "";
     return;
   }
 
@@ -343,15 +351,18 @@ function renderMachinesGrid(forceRender = false) {
     const icon = m.category === "washer" ? WcuIcon.washer("", m.status) : WcuIcon.iron("", m.status);
     const sIcon = m.status === "available" ? WcuIcon.check() : (m.status === "broken" ? warningIcon : WcuIcon.cross());
     return `
-      <div class="machine-card status-${m.status}" id="card-${m.uid}" data-status="${m.status}" onclick="openAdminModal('${m.uid}')" style="animation-delay: ${idx * 0.05}s">
+      <div class="machine-card status-${escapeHtml(m.status)}" id="card-${escapeHtml(m.uid)}" data-uid="${escapeHtml(m.uid)}" data-status="${escapeHtml(m.status)}" role="button" tabindex="0" aria-label="${escapeHtml(`${CATEGORY_LABEL[m.category]} ${m.id} ${getRemainingTime(m).text}`)}" style="animation-delay: ${idx * 0.05}s">
         <div class="card-icon">${icon}<span class="status-dot">${sIcon}</span></div>
-        <p class="card-label">เครื่อง ${m.id}</p>
+        <p class="card-label">เครื่อง ${escapeHtml(m.id)}</p>
         <p class="card-time">${getRemainingTime(m).text}</p>
       </div>`;
   }).join("");
 }
 
-function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+// ใช้ได้ทั้งในเนื้อหาและใน attribute (ต้องหนี " และ ' ด้วย ไม่งั้นข้อมูลจากนิสิตแทรก onerror= ได้)
+function escapeHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
 
 // ==========================================
 // ฟังก์ชันสำหรับดูรูปภาพใหญ่ + ซูมและลากได้ (Pan & Drag)
@@ -417,7 +428,16 @@ window.openPhotoModal = function(src) {
             img.style.transform = `translate(${dragInfo.tx}px, ${dragInfo.ty}px) scale(2.5)`;
         };
         
+        let lastTouchEnd = 0;
         const onUp = (e) => {
+            // แตะบนมือถือ: เบราว์เซอร์จะยิง mousedown/mouseup ตามมาอีกชุด ทำให้ซูมแล้วเด้งกลับทันที
+            if (e.type === "touchend") {
+                lastTouchEnd = Date.now();
+                if (e.target === img) e.preventDefault();
+            } else if (Date.now() - lastTouchEnd < 700) {
+                return;
+            }
+            if (startClientX === undefined) return;
             const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
             const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
             
@@ -432,13 +452,13 @@ window.openPhotoModal = function(src) {
             }
         };
 
-        img.addEventListener('mousedown', onDown);
+        img.addEventListener('mousedown', (e) => { if (Date.now() - lastTouchEnd < 700) return; onDown(e); });
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onUp);
         
         img.addEventListener('touchstart', onDown, {passive: false});
         window.addEventListener('touchmove', onMove, {passive: false});
-        window.addEventListener('touchend', onUp);
+        window.addEventListener('touchend', onUp, {passive: false});
 
         // ปิด Modal
         document.getElementById("close-photo-btn").addEventListener('click', () => {
@@ -471,6 +491,10 @@ function setupModals() {
     e.preventDefault();
     const machine = currentMachinesList.find(m => m.uid === activeModalMachineUid);
     const newId = document.getElementById("edit-machine-id").value.trim();
+    if (!newId) {
+      showToast("กรอกหมายเลขเครื่อง", "หมายเลขเครื่องต้องไม่เว้นว่าง", "error");
+      return;
+    }
     if (machine && isDuplicateMachineId(machine.category, newId, machine.uid)) {
       showToast("หมายเลขซ้ำ", `มี${CATEGORY_LABEL[machine.category]}หมายเลข ${newId} อยู่แล้ว`, "error");
       return;
@@ -522,12 +546,17 @@ function setupModals() {
     const machine = currentMachinesList.find(m => m.uid === activeModalMachineUid);
     if (!machine) return;
     const wasBroken = machine.status === "broken";
+    const wasBusy = machine.status === "busy";
     let nextStatus = "available";
     if (machine.status === "available") nextStatus = machine.category === "iron" ? "busy" : "broken";
+    // หยุดเครื่องที่กำลังทำงาน: ถ้ามีใบแจ้งซ่อมค้างต้องไปเป็น "มีปัญหา" ไม่ใช่ "ว่าง"
+    else if (wasBusy) nextStatus = wcuStatusAfterWash(machine.uid);
     wcuSetMachineStatus(machine.uid, nextStatus);
+    const saved = wcuGetMachines().find(m => m.uid === machine.uid);
+    nextStatus = saved ? saved.status : nextStatus;
     machine.status = nextStatus;
     if (nextStatus === "broken") {
-      showToast("ปิดใช้งานเครื่องแล้ว", "นักศึกษาจะเห็นว่าเครื่องนี้งดให้บริการชั่วคราว", "success");
+      showToast("ปิดใช้งานเครื่องแล้ว", wasBusy ? "เครื่องนี้มีใบแจ้งซ่อมค้างอยู่ จึงปิดใช้งานรอซ่อม" : "นักศึกษาจะเห็นว่าเครื่องนี้งดให้บริการชั่วคราว", "success");
     }
     if (wasBroken) {
       // เดิมเปิดเครื่องแล้วใบแจ้งซ่อมยังค้าง "รอดำเนินการ" ตลอด
@@ -539,7 +568,18 @@ function setupModals() {
   };
 
   document.getElementById("modal-delete-btn").onclick = () => {
+    const machine = currentMachinesList.find(m => m.uid === activeModalMachineUid);
     closeModal("admin-modal");
+    const notes = [];
+    if (machine) {
+      const open = wcuOpenReportsForMachine(machine.uid).length;
+      const pending = wcuGetPendingSession(machine.uid);
+      if (machine.status === "busy") notes.push("เครื่องกำลังทำงานอยู่");
+      if (open) notes.push(`มีใบแจ้งซ่อมค้าง ${open} ใบ (ใบแจ้งจะยังอยู่ในหน้าแจ้งซ่อม)`);
+      if (pending && Number(pending.amount) > 0) notes.push(`มีเหรียญค้างในเครื่อง ${formatBaht(pending.amount)}`);
+    }
+    const name = machine ? `${CATEGORY_LABEL[machine.category]} ${machine.id}` : "เครื่องนี้";
+    setText("delete-desc", `${name} จะถูกลบออกจากระบบอย่างถาวร${notes.length ? ` · ⚠ ${notes.join(" · ")}` : ""} · รายรับและรายจ่ายเดิมยังเก็บไว้`);
     document.getElementById("delete-modal").hidden = false;
   };
 
@@ -563,6 +603,10 @@ function setupModals() {
     e.preventDefault();
     const cat = document.getElementById("new-category").value;
     const id = document.getElementById("new-id").value.trim();
+    if (!id) {
+      showToast("กรอกหมายเลขเครื่อง", "หมายเลขเครื่องต้องไม่เว้นว่าง", "error");
+      return;
+    }
     if (isDuplicateMachineId(cat, id)) {
       showToast("หมายเลขซ้ำ", `มี${CATEGORY_LABEL[cat]}หมายเลข ${id} อยู่แล้ว ลองใช้ ${nextMachineNumber(cat)}`, "error");
       return;
@@ -576,7 +620,11 @@ function setupModals() {
     showToast("เพิ่มเครื่องสำเร็จ", `เพิ่ม ${CATEGORY_LABEL[cat]} หมายเลข ${id} เข้าสู่ระบบแล้ว`, "success");
   };
 
-  document.getElementById("delete-cancel-btn").onclick = () => closeModal("delete-modal");
+  document.getElementById("delete-cancel-btn").onclick = () => {
+    closeModal("delete-modal");
+    // ยกเลิกแล้วกลับไปหน้าต่างเครื่องเดิม (เหมือนปุ่มยกเลิกตอนบันทึก)
+    if (activeModalMachineUid && currentMachinesList.some(m => m.uid === activeModalMachineUid)) document.getElementById("admin-modal").hidden = false;
+  };
   document.getElementById("delete-confirm-btn").onclick = () => {
     if (activeModalMachineUid) {
       wcuDeleteMachine(activeModalMachineUid);
@@ -588,6 +636,31 @@ function setupModals() {
   };
 
   document.querySelectorAll(".modal-close").forEach(btn => btn.onclick = (e) => closeModal(e.target.closest(".modal-backdrop").id));
+
+  // การ์ดเครื่อง: คลิก หรือกด Enter/Space (ใช้คีย์บอร์ดได้)
+  const grid = document.getElementById("machine-grid");
+  grid.addEventListener("click", (e) => {
+    const card = e.target.closest(".machine-card[data-uid]");
+    if (card) openAdminModal(card.dataset.uid);
+  });
+  grid.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches(".machine-card[data-uid]")) {
+      e.preventDefault();
+      openAdminModal(e.target.dataset.uid);
+    }
+  });
+
+  // ปุ่ม Esc ปิดหน้าต่างบนสุด (ใช้ทางเดียวกับปุ่มยกเลิก เพื่อให้กลับไปหน้าต่างเดิมถูกต้อง)
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    const photo = document.getElementById("photo-modal");
+    if (photo && photo.style.display === "flex") { document.getElementById("close-photo-btn").click(); return; }
+    const open = [...document.querySelectorAll(".modal-backdrop")].filter((m) => !m.hidden && m.id !== "photo-modal");
+    const top = open.find((m) => m.id === "confirm-modal") || open[open.length - 1];
+    if (!top) return;
+    const cancel = top.querySelector("#save-cancel-btn, #delete-cancel-btn, #confirm-cancel-btn, #add-cancel-btn, #expense-cancel-btn, #expense-delete-cancel-btn, #success-close-btn, .modal-close");
+    if (cancel) cancel.click(); else closeModal(top.id);
+  });
 }
 
 window.openAdminModal = function(uid) {

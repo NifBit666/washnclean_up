@@ -57,20 +57,22 @@ function repAvg(list) { return list.length ? list.reduce((a, b) => a + b, 0) / l
 
 // อาการ / รายละเอียด / ผู้แจ้ง (รองรับทั้งใบแจ้งแบบใหม่และข้อมูลเก่าที่เป็นข้อความล้วน)
 function repIssues(r) {
-  if (Array.isArray(r.issues) && r.issues.length) return r.issues;
-  const match = r.detail && r.detail.match(/อาการ:\s*(.*?)(?:\s*—|$)/);
+  if (Array.isArray(r.issues) && r.issues.length) return r.issues.map((x) => String(x));
+  const detail = typeof r.detail === "string" ? r.detail : "";
+  const match = detail.match(/อาการ:\s*(.*?)(?:\s*—|$)/);
   return match && match[1] ? match[1].split(",").map((s) => s.trim()).filter(Boolean) : [];
 }
 function repExtra(r) {
-  if (r.extraDetail) return r.extraDetail;
-  if (!r.detail) return "";
-  const extra = r.detail.match(/เพิ่มเติม:\s*(.*?)(?:\s*\(มีรูป|$)/);
+  if (r.extraDetail) return String(r.extraDetail);
+  const detail = typeof r.detail === "string" ? r.detail : "";
+  if (!detail) return "";
+  const extra = detail.match(/เพิ่มเติม:\s*(.*?)(?:\s*\(มีรูป|$)/);
   if (extra) return extra[1].trim();
-  return /อาการ:|ผู้แจ้ง:/.test(r.detail) ? "" : r.detail;
+  return /อาการ:|ผู้แจ้ง:/.test(detail) ? "" : detail;
 }
 function repStudent(r) {
-  if (r.studentId) return r.studentId;
-  const m = r.detail && r.detail.match(/ผู้แจ้ง:\s*(\d+)/);
+  if (r.studentId) return String(r.studentId);
+  const m = typeof r.detail === "string" && r.detail.match(/ผู้แจ้ง:\s*(\d+)/);
   return m ? m[1] : "";
 }
 function repSeverity(r) { return WCU_SEVERITY[r.severity] ? r.severity : "unknown"; }
@@ -136,7 +138,16 @@ function renderReports(force = true) {
   ].join("|");
   if (!force && signature === repState.sig) return;
   repState.sig = signature;
+  // ใบแจ้งที่ข้อมูลเสีย 1 ใบต้องไม่ทำให้ทั้งหน้าว่าง และต้องลองวาดใหม่รอบถัดไป
+  try {
+    repRenderList(machines);
+  } catch (err) {
+    repState.sig = "";
+    console.error("[reports] วาดรายการไม่สำเร็จ", err);
+  }
+}
 
+function repRenderList(machines) {
   const machineMap = new Map(machines.map((m) => [m.uid, m]));
   const reports = wcuGetReports();
   const all = reports.map((r) => ({ r, info: repMachine(r, machineMap), status: wcuReportStatus(r) }));
@@ -541,7 +552,8 @@ function saveReportDetail(e) {
     if (existing) {
       wcuUpdateExpense(existing.id, { amount: cost, machineUid, note: expenseNote });
       if (existing.amount !== cost) { costMsg = ` · แก้ค่าซ่อมเป็น ${formatBaht(cost)}`; changes.push(`แก้ค่าซ่อมเป็น ${formatBaht(cost)}`); }
-    } else {
+    } else if (cost !== (Number(r.repairCost) || 0)) {
+      // สร้างรายจ่ายใหม่เฉพาะตอนแก้ตัวเลขค่าซ่อม (กดบันทึกซ้ำเฉยๆ ต้องไม่สร้างรายจ่ายซ้ำ/คืนชีพรายการที่ลบไปแล้ว)
       const exp = wcuAddExpense({ category: "repair", amount: cost, date: wcuDateKey(now), machineUid, note: expenseNote });
       patch.expenseId = exp.id;
       costMsg = ` · บันทึกค่าซ่อม ${formatBaht(cost)} ในหน้ารายจ่ายแล้ว`;

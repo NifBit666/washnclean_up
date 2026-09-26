@@ -262,7 +262,8 @@ function rfCooldownLeft() {
 function rfUpdateCooldown() {
   const btn = rfEl("submit-btn");
   const left = rfCooldownLeft();
-  const available = wcuGetMachines().some((m) => m.status !== "broken");
+  const machines = wcuGetMachines();
+  const available = machines.some((m) => m.status !== "broken");
   if (left > 0) {
     const secs = Math.ceil(left / 1000);
     btn.disabled = true;
@@ -272,7 +273,7 @@ function rfUpdateCooldown() {
   }
   if (rfCooldownTimer) { clearInterval(rfCooldownTimer); rfCooldownTimer = null; }
   btn.disabled = !available;
-  btn.textContent = available ? "ตรวจสอบและส่งรายงาน" : "ทุกเครื่องมีคนแจ้งซ่อมแล้ว";
+  btn.textContent = available ? "ตรวจสอบและส่งรายงาน" : machines.length ? "ทุกเครื่องมีคนแจ้งซ่อมแล้ว" : wcuLoadingText("ยังไม่มีเครื่องในระบบ");
   return false;
 }
 
@@ -333,8 +334,7 @@ async function rfSubmit() {
     refundStatus: lost && rf.refund ? "pending" : null,
     contact,
     extraDetail: detail,
-    photos: rf.photos.slice(),
-    photo: rf.photos[0] || "",
+    photos: rf.photos.slice(), // (ไม่เก็บ photo ซ้ำกับรูปแรกแล้ว เปลืองพื้นที่เป็นเท่าตัว)
     detail: `ผู้แจ้ง: ${studentId} — อาการ: ${issues.join(", ")} ${detail ? "— เพิ่มเติม: " + detail : ""}`,
     createdAt: new Date(now).toISOString(),
     resolved: false,
@@ -349,34 +349,58 @@ async function rfSubmit() {
   if (!saved) {
     try {
       report.photos = await Promise.all(report.photos.map((p) => rfShrinkDataUrl(p, 640, 0.6)));
-      report.photo = report.photos[0];
       wcuAddReport(report); saved = true;
     } catch (e) {
       try { report.photos = report.photos.slice(0, 1); wcuAddReport(report); saved = true; } catch (e2) { /* เต็มจริง */ }
     }
   }
-  btn.disabled = false;
-  btn.textContent = "ยืนยันส่งรายงาน";
-  if (!saved) {
+  const resetButton = () => { btn.disabled = false; btn.textContent = "ยืนยันส่งรายงาน"; };
+  const fail = (text) => {
+    resetButton();
     rfEl("review-modal").hidden = true;
     const status = rfEl("feedback-status");
-    status.textContent = "พื้นที่เก็บข้อมูลในเครื่องเต็ม ส่งรายงานไม่สำเร็จ กรุณาลบรูปบางรูปแล้วลองใหม่ หรือแจ้งแอดมิน";
+    status.textContent = text;
     status.classList.add("error");
+  };
+  if (!saved) {
+    fail("พื้นที่เก็บข้อมูลในเครื่องเต็ม ส่งรายงานไม่สำเร็จ กรุณาลบรูปบางรูปแล้วลองใหม่ หรือแจ้งแอดมิน");
     return;
   }
 
-  wcuSetMachineStatus(machine.uid, "broken");
-  localStorage.setItem(RF_KEYS.lastReport, String(now));
-  const mine = rfStore(RF_KEYS.mine, []);
-  mine.push(report.id);
-  localStorage.setItem(RF_KEYS.mine, JSON.stringify(mine.slice(-30)));
-  if (rfEl("rf-remember").checked) localStorage.setItem(RF_KEYS.studentId, studentId);
-  else localStorage.removeItem(RF_KEYS.studentId);
+  // โหมด Firebase: รอให้เซิร์ฟเวอร์รับใบแจ้งก่อน ค่อยบอกว่าส่งสำเร็จ
+  let cloudNote = "";
+  if (typeof wcuCloudWaitForWrites === "function") {
+    const result = await wcuCloudWaitForWrites(10000);
+    if (result.error) {
+      fail(`ส่งรายงานไม่สำเร็จ: ${typeof wcuCloudErrorText === "function" ? wcuCloudErrorText(result.error) : "ลองใหม่อีกครั้ง"}`);
+      return;
+    }
+    if (result.timeout) cloudNote = "สัญญาณอินเทอร์เน็ตอ่อน ระบบจะส่งให้เองเมื่อเชื่อมต่อได้ อย่าเพิ่งปิดหน้านี้";
+  }
 
+  // ขั้นตอนหลังบันทึกใบแจ้งแล้ว ห้ามทำให้หน้าค้าง (กดยืนยันซ้ำจะได้ใบแจ้งซ้ำ)
+  try {
+    // เครื่องที่กำลังซัก/รีดอยู่: ไม่ตัดรอบของคนที่ใช้อยู่ แต่ติดธงให้ปิดใช้งานเองเมื่อจบรอบ
+    if (machine.status === "busy") wcuSetNeedsRepair(machine.uid, true);
+    else wcuSetMachineStatus(machine.uid, "broken");
+  } catch (e) { console.error(e); }
+  try {
+    localStorage.setItem(RF_KEYS.lastReport, String(now));
+    const mine = rfStore(RF_KEYS.mine, []);
+    mine.push(report.id);
+    localStorage.setItem(RF_KEYS.mine, JSON.stringify(mine.slice(-30)));
+    if (rfEl("rf-remember").checked) localStorage.setItem(RF_KEYS.studentId, studentId);
+    else localStorage.removeItem(RF_KEYS.studentId);
+  } catch (e) { console.error(e); }
+
+  resetButton();
   rfEl("review-modal").hidden = true;
+  const busyNote = machine.status === "busy" ? "เครื่องกำลังทำงานอยู่ จะปิดใช้งานเองเมื่อจบรอบนี้" : "";
   rfEl("success-ticket").innerHTML = `
     <span>หมายเลขการแจ้ง</span><strong>${rfEsc(rfCode(report.id))}</strong>
-    <small>${rfEsc(`${RF_LABEL[machine.category]} ${machine.id}`)} · สถานะ: รอตรวจสอบ</small>`;
+    <small>${rfEsc(`${RF_LABEL[machine.category]} ${machine.id}`)} · สถานะ: รอตรวจสอบ</small>
+    ${busyNote ? `<small>${rfEsc(busyNote)}</small>` : ""}
+    ${cloudNote ? `<small class="warn">⚠ ${rfEsc(cloudNote)}</small>` : ""}`;
   rfEl("success-modal").hidden = false;
   rfReset();
 }
@@ -447,7 +471,7 @@ function rfRenderMine(force = false) {
           <span class="rfm-pill st-${status}">${RF_STATUS[status]}</span>
         </div>
         <ol class="rfm-track">${steps}</ol>
-        <p class="rfm-line">${(r.issues || []).map((i) => `${wcuIssueIcon(i)} ${rfEsc(i)}`).join(" · ") || "ไม่ระบุอาการ"}</p>
+        <p class="rfm-line">${(Array.isArray(r.issues) ? r.issues : []).map((i) => `${wcuIssueIcon(i)} ${rfEsc(i)}`).join(" · ") || "ไม่ระบุอาการ"}</p>
         ${refund}${note}
       </article>`;
   }).join("");
@@ -533,6 +557,8 @@ function rfTick() {
   rfEl("fb-photo").addEventListener("change", async (e) => {
     const files = [...e.target.files].slice(0, RF_MAX_PHOTOS - rf.photos.length);
     const status = rfEl("feedback-status");
+    status.textContent = "";
+    status.classList.remove("error");
     for (const f of files) {
       try { rf.photos.push(await (wcuCloudEnabled() ? rfCompress(f, 900, 0.72) : rfCompress(f))); }
       catch (err) { status.textContent = err.message; status.classList.add("error"); }
@@ -550,6 +576,8 @@ function rfTick() {
     if (!b) return;
     e.preventDefault();
     rf.photos.splice(Number(b.dataset.remove), 1);
+    rfEl("feedback-status").textContent = "";
+    rfEl("feedback-status").classList.remove("error");
     rfRenderPhotos();
     rfUpdate();
   });

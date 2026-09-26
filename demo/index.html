@@ -149,7 +149,7 @@
     let toastTimer = null;
 
     // วาดโครงใหม่เมื่อมีการเพิ่ม/ลบ/เปลี่ยนเลขเครื่อง (เดิมเช็กแค่จำนวนเครื่อง ชื่อเลยไม่อัปเดต)
-    const machineSignature = (machines) => JSON.stringify(machines.map((m) => [m.uid, m.id, m.category]));
+    const machineSignature = (machines) => JSON.stringify(machines.map((m) => [m.uid, m.id, m.category])) + wcuLoadingText("");
 
     // 1. สร้างโครงสร้างการ์ด
     function renderLayout() {
@@ -179,7 +179,7 @@
               <button type="button" id="btn-finish-${esc(m.uid)}" class="d-btn ghost" data-action="finish" data-uid="${esc(m.uid)}" hidden>⏩ ข้ามเวลา (ซักเสร็จทันที)</button>
             </div>
           </div>
-        `).join("") : `<div class="empty-demo">ยังไม่มีเครื่องซักผ้าในระบบ</div>`;
+        `).join("") : `<div class="empty-demo">${esc(wcuLoadingText("ยังไม่มีเครื่องซักผ้าในระบบ"))}</div>`;
 
       document.getElementById("demo-irons").innerHTML = irons.length ? irons.map((m) => `
           <div class="demo-card" id="card-${esc(m.uid)}">
@@ -198,7 +198,7 @@
               <button type="button" id="btn-unplug-${esc(m.uid)}" class="d-btn danger" data-action="unplug" data-uid="${esc(m.uid)}" hidden>ถอดปลั๊กออก</button>
             </div>
           </div>
-        `).join("") : `<div class="empty-demo">ยังไม่มีเตารีดในระบบ</div>`;
+        `).join("") : `<div class="empty-demo">${esc(wcuLoadingText("ยังไม่มีเตารีดในระบบ"))}</div>`;
 
       syncUI();
     }
@@ -209,7 +209,7 @@
       const machines = wcuGetMachines();
       if (machineSignature(machines) !== layoutSignature) { renderLayout(); return; }
       const usage = wcuGetUsage();
-      const now = Date.now();
+      const now = wcuNow();
 
       machines.forEach((m) => {
         const isBusy = m.status === "busy";
@@ -305,6 +305,16 @@
     }
 
     // 3. ควบคุม Action ต่างๆ
+    // บันทึกไม่ได้ (เช่นพื้นที่เก็บข้อมูลในเครื่องเต็ม) ต้องบอกผู้ใช้ ไม่ใช่เงียบหาย
+    function safely(action) {
+      try { action(); }
+      catch (err) {
+        console.error(err);
+        showDemoToast(/quota/i.test(String(err && (err.name || err.message))) ? "บันทึกไม่ได้: พื้นที่เก็บข้อมูลในเบราว์เซอร์เต็ม" : "เกิดข้อผิดพลาด ลองใหม่อีกครั้ง");
+      }
+      syncUI();
+    }
+
     function insertCoin(uid) {
       const result = wcuInsertCoin(uid);
       if (!result.ok) { showDemoToast(result.reason); syncUI(); return; }
@@ -316,7 +326,12 @@
     }
 
     function finishWash(uid) {
-      if (wcuFinishWash(uid)) showDemoToast("ซักเสร็จแล้ว เครื่องว่างพร้อมให้คนต่อไปใช้");
+      if (wcuFinishWash(uid)) {
+        const m = wcuGetMachines().find((x) => x.uid === uid);
+        showDemoToast(m && m.status === "broken"
+          ? "ซักเสร็จแล้ว · เครื่องนี้มีใบแจ้งซ่อมค้าง จึงปิดใช้งานรอซ่อม"
+          : "ซักเสร็จแล้ว เครื่องว่างพร้อมให้คนต่อไปใช้");
+      }
       syncUI();
     }
 
@@ -329,6 +344,8 @@
       if (startsUsing) {
         wcuRecordUsage(uid); // เตารีดฟรี แต่ยังนับจำนวนครั้งที่ใช้งาน
         showDemoToast(`เตารีด ${machine.id} เริ่มใช้งาน · บันทึกจำนวนครั้งในหน้ารายรับแล้ว`);
+      } else if (newStatus === "available" && machine.needsRepair) {
+        showDemoToast(`ถอดปลั๊กแล้ว · เตารีด ${machine.id} มีใบแจ้งซ่อมค้าง จึงปิดใช้งานรอซ่อม`);
       }
       syncUI();
     }
@@ -337,10 +354,10 @@
       const btn = e.target.closest("[data-action]");
       if (!btn || btn.disabled) return;
       const uid = btn.dataset.uid;
-      if (btn.dataset.action === "coin") insertCoin(uid);
-      else if (btn.dataset.action === "finish") finishWash(uid);
-      else if (btn.dataset.action === "plug") togglePlug(uid, "busy");
-      else if (btn.dataset.action === "unplug") togglePlug(uid, "available");
+      if (btn.dataset.action === "coin") safely(() => insertCoin(uid));
+      else if (btn.dataset.action === "finish") safely(() => finishWash(uid));
+      else if (btn.dataset.action === "plug") safely(() => togglePlug(uid, "busy"));
+      else if (btn.dataset.action === "unplug") safely(() => togglePlug(uid, "available"));
     });
 
     // --- Boot ---

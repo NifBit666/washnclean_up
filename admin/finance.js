@@ -366,10 +366,10 @@ function finBuildBuckets(range) {
    CSV
    ============================================================ */
 
-function finDownloadCSV(filename, rows) {
+function finDownloadCSV(filename, rows, dataCount) {
   const esc = (v) => {
     let s = v === null || v === undefined ? "" : String(v);
-    if (/^[=+\-@]/.test(s) && isNaN(Number(s))) s = `'${s}`; // กันสูตรใน Excel
+    if (/^[=+\-@\t\r]/.test(s) && isNaN(Number(s))) s = `'${s}`; // กันสูตรใน Excel
     return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const csv = "﻿" + rows.map((r) => r.map(esc).join(",")).join("\r\n");
@@ -382,7 +382,8 @@ function finDownloadCSV(filename, rows) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  showToast("ดาวน์โหลดแล้ว", `${filename} · ${(rows.length - 1).toLocaleString("th-TH")} รายการ`, "success");
+  const count = Number.isFinite(dataCount) ? dataCount : rows.length - 1;
+  showToast("ดาวน์โหลดแล้ว", `${filename} · ${count.toLocaleString("th-TH")} รายการ`, "success");
 }
 
 /* ============================================================
@@ -597,7 +598,8 @@ function renderRevenueTransactions(inRange, machineMap) {
   const list = document.getElementById("rev-txn-list");
   const moreBtn = document.getElementById("rev-txn-more");
   if (!list) return;
-  const sorted = inRange.slice().sort((a, b) => finActivityTs(b) - finActivityTs(a));
+  // เรียง จัดกลุ่มวัน และแสดงเวลา ด้วยเวลาเดียวกัน (เวลาเริ่มหยอด = เวลาที่นับเป็นรายรับ)
+  const sorted = inRange.slice().sort((a, b) => (Number(b.at) || 0) - (Number(a.at) || 0));
   setText("rev-txn-count", sorted.length ? `${sorted.length.toLocaleString("th-TH")} รายการ` : "");
   if (!sorted.length) {
     list.innerHTML = `<div class="empty-state">ยังไม่มีการใช้งานในช่วงนี้</div>`;
@@ -636,7 +638,7 @@ function renderRevenueTransactions(inRange, machineMap) {
         <span class="txn-icon">${icon}</span>
         <div class="txn-info">
           <span class="name">${escapeHtml(info.name)} ${tags}</span>
-          <span class="usage">${finTime(finActivityTs(u))} น. · ${escapeHtml(what)}${info.deleted ? " · ลบออกแล้ว" : ""}</span>
+          <span class="usage">${finTime(u.at)} น.${finActivityTs(u) - Number(u.at) >= 60000 ? ` (ล่าสุด ${finTime(finActivityTs(u))} น.)` : ""} · ${escapeHtml(what)}${info.deleted ? " · ลบออกแล้ว" : ""}</span>
         </div>
         ${amount}
       </div>`;
@@ -656,13 +658,13 @@ function exportRevenueCSV() {
   list.forEach((u) => {
     const info = finMachineName(u.uid, u.category, u.machineId, machineMap);
     rows.push([
-      wcuDateKey(u.at), finTime(finActivityTs(u)), CATEGORY_LABEL[info.category], info.short.replace("เครื่อง ", ""),
+      wcuDateKey(u.at), finTime(u.at), CATEGORY_LABEL[info.category], info.short.replace("เครื่อง ", ""),
       wcuIsCompletedUse(u) ? "ใช้งานแล้ว" : "หยอดเหรียญยังไม่ครบ", wcuIsSampleRecord(u) ? "ข้อมูลตัวอย่าง" : "หน้า demo",
       info.deleted ? "เครื่องถูกลบแล้ว" : "", Math.max(0, Number(u.amount) || 0),
     ]);
   });
   rows.push(["รวม", "", "", "", "", "", "", finSum(list)]);
-  finDownloadCSV(`washnclean-revenue-${range.period}-${wcuDateKey(Date.now())}.csv`, rows);
+  finDownloadCSV(`washnclean-revenue-${range.period}-${wcuDateKey(Date.now())}.csv`, rows, list.length);
 }
 
 /* ============================================================
@@ -898,7 +900,7 @@ function exportExpensesCSV() {
   const rows = [["วันที่", "หมวดหมู่", "เครื่องที่เกี่ยวข้อง", "รายละเอียด", "จำนวนเงิน (บาท)"]];
   list.forEach((e) => rows.push([e.date, finExpenseCategory(e.category).label, finExpenseMachineName(e, machineMap), e.note, e.amount]));
   rows.push(["รวม", "", "", "", finSum(list)]);
-  finDownloadCSV(`washnclean-expenses-${range.period}-${wcuDateKey(Date.now())}.csv`, rows);
+  finDownloadCSV(`washnclean-expenses-${range.period}-${wcuDateKey(Date.now())}.csv`, rows, list.length);
 }
 
 /* ---------- เพิ่ม / แก้ไข / ลบรายจ่าย ---------- */
@@ -954,8 +956,13 @@ function saveExpenseFromForm(e) {
     note: document.getElementById("exp-note").value,
   };
   const editing = finState.editingExpenseId;
-  if (editing) wcuUpdateExpense(editing, data);
-  else wcuAddExpense(data);
+  let linked = 0;
+  if (editing) {
+    const updated = wcuUpdateExpense(editing, data);
+    // ค่าซ่อมที่ผูกกับใบแจ้งซ่อม → อัปเดตยอดในใบแจ้งให้ตรงกัน
+    if (updated) linked = wcuSyncReportsAfterExpenseChange(editing, updated);
+  } else wcuAddExpense(data);
+  if (linked) showToast("อัปเดตใบแจ้งซ่อมด้วย", "ค่าซ่อมในใบแจ้งซ่อมที่ผูกกับรายการนี้ถูกแก้ให้ตรงกันแล้ว", "success");
   closeModal("expense-modal");
   finState.editingExpenseId = null;
 
@@ -1051,10 +1058,14 @@ function setupFinance() {
     document.getElementById("expense-modal").hidden = false;
   });
   document.getElementById("expense-delete-confirm-btn").addEventListener("click", () => {
-    if (finState.editingExpenseId) wcuDeleteExpense(finState.editingExpenseId);
+    let linked = 0;
+    if (finState.editingExpenseId) {
+      wcuDeleteExpense(finState.editingExpenseId);
+      linked = wcuSyncReportsAfterExpenseChange(finState.editingExpenseId, null);
+    }
     finState.editingExpenseId = null;
     closeModal("expense-delete-modal");
-    showToast("ลบรายจ่ายแล้ว", "รายการถูกลบออกจากบัญชีเรียบร้อย", "success");
+    showToast("ลบรายจ่ายแล้ว", linked ? "ลบค่าซ่อม/เงินคืนออกจากใบแจ้งซ่อมที่ผูกไว้ด้วย" : "รายการถูกลบออกจากบัญชีเรียบร้อย", "success");
     renderExpensesView(true);
   });
 

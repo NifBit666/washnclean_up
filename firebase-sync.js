@@ -39,6 +39,10 @@
       : /\/demo\//.test(path) ? "demo"
         : /\/student\//.test(path) ? "student" : "other";
 
+  // หน้านิสิต / demo เห็นใบแจ้งซ่อมแค่บางส่วน จึงใช้แคชแยก ไม่ไปทับรายการเต็มของแท็บแอดมินในเบราว์เซอร์เดียวกัน
+  if (MODE === "student") WCU_KEYS.reports = "wcu:reports:student";
+  if (MODE === "demo") WCU_KEYS.reports = "wcu:reports:demo";
+
   const natural = (a, b) => String(a ?? "").localeCompare(String(b ?? ""), "th", { numeric: true });
   const ts = (v) => { const t = typeof v === "number" ? v : new Date(v).getTime(); return Number.isFinite(t) ? t : 0; };
   const COLS = {
@@ -77,6 +81,7 @@
   const ready = {}; // ชุดข้อมูลที่ได้ข้อมูลรอบแรกจาก Firebase แล้ว
   const known = {}; // สถานะล่าสุดบน Firebase: ชื่อชุด → { id: item }
   const queue = []; // งานเขียนที่รอให้ล็อกอินเสร็จก่อน (ใบแจ้งซ่อมของนิสิต)
+  const inflight = new Set(); // งานเขียนที่ส่งไปแล้วแต่ Firebase ยังไม่ตอบ → ใช้รอผลใน wcuCloudWaitForWrites()
   let detachers = [];
   let db = null;
   let auth = null;
@@ -239,13 +244,41 @@
   }
 
   function send(name, ops, created) {
-    return db.ref().update(ops).then(() => {
-      if (MODE === "student" && name === "reports") created.forEach((x) => watchReport(x.id));
+    // ใบแจ้งที่รอคิวตอนยังไม่ได้ล็อกอิน: ใส่เจ้าของตอนส่งจริง (rules บังคับ ownerUid ต้องตรงกับผู้ส่ง)
+    if (name === "reports" && cloud.user) {
+      created.forEach((x) => {
+        const path = `${COLS.reports.path}/${safeKey(x.id)}`;
+        if (ops[path] && !ops[path].ownerUid) ops[path].ownerUid = cloud.user.uid;
+      });
+    }
+    const job = db.ref().update(ops).then(() => {
+      if (MODE === "student" && name === "reports") {
+        created.forEach((x) => {
+          // ฟังใหม่หลังเซิร์ฟเวอร์รับแล้ว (ถ้าฟังก่อนใบแจ้งจะถูกปฏิเสธเพราะยังไม่มีอยู่จริง)
+          const off = watched.get(x.id);
+          if (off) { try { off(); } catch (e) { /* ignore */ } watched.delete(x.id); }
+          watchReport(x.id);
+        });
+      }
+      return { ok: true };
     }).catch((err) => {
       fail("บันทึกขึ้นฐานข้อมูลไม่สำเร็จ", err);
       if (MODE === "student" && name === "reports") created.forEach((x) => { delete pendingMine[x.id]; publishMine(); });
+      return { error: err };
     });
+    inflight.add(job);
+    job.finally(() => inflight.delete(job));
+    return job;
   }
+
+  // ใช้ตอนส่งใบแจ้ง: รอจนเซิร์ฟเวอร์ตอบ (หรือหมดเวลา) ก่อนบอกนิสิตว่าส่งสำเร็จ
+  window.wcuCloudWaitForWrites = function (timeoutMs = 10000) {
+    const jobs = [...inflight, ...queue.map((q) => q.waiter)].filter(Boolean);
+    if (!jobs.length) return Promise.resolve({ ok: true });
+    const all = Promise.all(jobs).then((results) => results.find((r) => r && r.error) || { ok: true });
+    const timeout = new Promise((resolve) => setTimeout(() => resolve({ timeout: true }), timeoutMs));
+    return Promise.race([all, timeout]);
+  };
 
   // เรียกจาก wcuSet() ใน shared-data.js ทุกครั้งที่หน้าเว็บบันทึกข้อมูล
   window.wcuCloudPush = function (key, next, prevRaw) {
@@ -263,12 +296,17 @@
 
     if (MODE === "student" && name === "reports") {
       if (db && cloud.user) send(name, ops, created);
-      else queue.push({ name, ops, created });
+      else {
+        const job = { name, ops, created };
+        job.waiter = new Promise((resolve) => { job.resolve = resolve; });
+        queue.push(job);
+      }
       return;
     }
-    // ข้อมูลชุดอื่นต้องได้ข้อมูลจริงจาก Firebase ก่อน กันแคชเก่าเขียนทับของจริง
-    if (!db || !cloud.user || !ready[name]) {
-      console.info(`[wcu-cloud] ยังไม่พร้อม ข้ามการบันทึก ${name} (จะใช้ข้อมูลจาก Firebase แทน)`);
+    // ข้อมูลชุดอื่นต้องได้ข้อมูลจริงจาก Firebase และยังเชื่อมต่ออยู่ กันแคชเก่าเขียนทับของจริง
+    if (!db || !cloud.user || !ready[name] || !cloud.connected) {
+      console.info(`[wcu-cloud] ยังไม่พร้อม/ออฟไลน์ ข้ามการบันทึก ${name} (จะใช้ข้อมูลจาก Firebase แทน)`);
+      if (MODE === "admin") notify("ยังบันทึกไม่ได้", cloud.connected ? "กำลังโหลดข้อมูลจากฐานข้อมูล รอสักครู่แล้วลองใหม่" : "ขาดการเชื่อมต่ออินเทอร์เน็ต การแก้ไขนี้ยังไม่ถูกบันทึก");
       return;
     }
     send(name, ops, created);
@@ -347,10 +385,11 @@
   function maybeSeed() {
     if (MODE !== "admin" || seedChecked || !SUBS.admin.every((n) => ready[n])) return;
     seedChecked = true;
-    db.ref("meta/seededAt").once("value").then((snap) => {
-      if (snap.val()) return;
+    // จองสิทธิ์สร้างข้อมูลตั้งต้นแบบ transaction: แอดมิน 2 เครื่องเปิดพร้อมกันจะไม่สร้างซ้ำ
+    db.ref("meta/seededAt").transaction((v) => (v ? undefined : Date.now())).then((res) => {
+      if (!res || !res.committed) return;
       const hasData = ["machines", "reports", "usage", "expenses"].some((n) => Object.keys(known[n] || {}).length);
-      const updates = { "meta/seededAt": Date.now() };
+      const updates = {};
       if (!hasData) {
         seeding = true;
         try {
@@ -368,6 +407,7 @@
           });
         });
       }
+      if (!Object.keys(updates).length) return;
       return db.ref().update(updates).then(() => {
         if (!hasData && typeof showToast === "function") {
           showToast("สร้างฐานข้อมูลเริ่มต้นแล้ว", "ใส่เครื่อง 10 เครื่องและข้อมูลตัวอย่างขึ้น Firebase ให้แล้ว", "success");
@@ -393,7 +433,10 @@
       const t = setInterval(syncMyWatches, 1500);
       detachers.push(() => clearInterval(t));
     }
-    while (queue.length) { const q = queue.shift(); send(q.name, q.ops, q.created); }
+    while (queue.length) {
+      const q = queue.shift();
+      send(q.name, q.ops, q.created).then((r) => q.resolve && q.resolve(r));
+    }
   }
 
   /* ---------------- ล็อกอิน ---------------- */
@@ -426,13 +469,27 @@
     }
     if (!user) {
       // นิสิต/หน้า demo ไม่ต้องสมัครสมาชิก: ใช้บัญชีไม่ระบุตัวตนของเบราว์เซอร์นี้
-      auth.signInAnonymously().catch((err) => fail("เข้าใช้งานฐานข้อมูลไม่ได้", err));
+      signInAnon();
       if (everHadUser) console.info("[wcu-cloud] ออกจากระบบแล้ว สร้างบัญชีไม่ระบุตัวตนใหม่");
       return;
     }
     everHadUser = true;
     attach();
   }
+
+  // ล็อกอินไม่ระบุตัวตนไม่สำเร็จ (เช่นเปิดครั้งแรกตอนไม่มีเน็ต) → ลองใหม่เรื่อยๆ และทันทีที่กลับมาออนไลน์
+  let anonTimer = null;
+  let anonDelay = 2000;
+  function signInAnon() {
+    clearTimeout(anonTimer);
+    if (!auth || auth.currentUser) return;
+    auth.signInAnonymously().then(() => { anonDelay = 2000; }).catch((err) => {
+      fail("เข้าใช้งานฐานข้อมูลไม่ได้", err);
+      anonTimer = setTimeout(signInAnon, anonDelay);
+      anonDelay = Math.min(anonDelay * 2, 60000);
+    });
+  }
+  window.addEventListener("online", () => { if (MODE === "student" || MODE === "demo") signInAnon(); });
 
   function toEmail(username) {
     const u = String(username || "").trim().toLowerCase();
@@ -462,9 +519,18 @@
       db = firebase.database(app);
       db.ref(".info/connected").on("value", (snap) => {
         cloud.connected = !!snap.val();
-        if (cloud.connected) cloud.error = "";
+        if (cloud.connected && cloud.ready) cloud.error = "";
         setState();
       });
+      // นาฬิกาเซิร์ฟเวอร์ → ใช้กับเวลานับถอยหลัง/เวลาเริ่มซัก (wcuNow ใน shared-data.js)
+      db.ref(".info/serverTimeOffset").on("value", (snap) => { window.WCU_TIME_OFFSET = Number(snap.val()) || 0; });
+      // โหลดไม่เสร็จใน 15 วินาที (เช่น databaseURL ผิด / Rules ไม่อนุญาต) → บอกให้ชัด แทนที่จะขึ้น "กำลังโหลด" ตลอด
+      setTimeout(() => {
+        if (cloud.ready || MODE === "admin-login" || MODE === "other") return;
+        if (!cloud.error) cloud.error = "timeout";
+        setState();
+        notify("เชื่อมต่อฐานข้อมูลไม่ได้", wcuCloudErrorText({ code: "timeout" }));
+      }, 15000);
       auth.onAuthStateChanged(onUser);
     });
   sdkReady.catch((err) => {
@@ -507,5 +573,6 @@ function wcuCloudErrorText(err) {
   if (/operation-not-allowed|admin-restricted-operation/.test(code)) return "ยังไม่ได้เปิดวิธีล็อกอินนี้ใน Firebase Authentication (Email/Password และ Anonymous)";
   if (/PERMISSION_DENIED|permission[_-]denied/i.test(code)) return "ไม่มีสิทธิ์เข้าถึงข้อมูล ตรวจสอบ Rules ของ Realtime Database";
   if (/api-key-not-valid|invalid-api-key/.test(code)) return "apiKey ใน firebase-config.js ไม่ถูกต้อง";
+  if (/^timeout$/.test(code)) return "โหลดข้อมูลไม่สำเร็จภายใน 15 วินาที ตรวจสอบอินเทอร์เน็ต, databaseURL และ Rules ของ Realtime Database";
   return "เกิดข้อผิดพลาด กรุณาลองใหม่";
 }

@@ -1,0 +1,63 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "machines": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email == 'admin@washnclean.app'",
+      "$uid": {
+        "status": {
+          ".write": "auth != null && data.parent().exists()",
+          ".validate": "newData.isString() && newData.val().matches(/^(available|busy|broken)$/)"
+        },
+        "startedAt": {
+          ".write": "auth != null && data.parent().exists()",
+          ".validate": "newData.isNumber()"
+        },
+        "needsRepair": {
+          ".write": "auth != null && data.parent().exists()",
+          ".validate": "newData.isBoolean()"
+        }
+      }
+    },
+
+    "usage": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email == 'admin@washnclean.app'",
+      ".indexOn": ["at"],
+      "$id": {
+        ".write": "auth != null && newData.exists()",
+        ".validate": "newData.hasChildren(['id', 'uid', 'at']) && newData.child('id').val() == $id"
+      }
+    },
+
+    "reports": {
+      ".read": "auth != null && auth.token.email == 'admin@washnclean.app'",
+      ".write": "auth != null && auth.token.email == 'admin@washnclean.app'",
+      "$id": {
+        ".read": "auth != null && data.child('ownerUid').val() == auth.uid",
+        ".write": "auth != null && !data.exists() && newData.child('ownerUid').val() == auth.uid",
+        ".validate": "newData.hasChildren(['id', 'createdAt']) && newData.child('id').val() == $id"
+      }
+    },
+
+    "expenses": {
+      ".read": "auth != null && auth.token.email == 'admin@washnclean.app'",
+      ".write": "auth != null && auth.token.email == 'admin@washnclean.app'"
+    },
+
+    "admins": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email == 'admin@washnclean.app'",
+      "$adminId": {
+        "password": { ".validate": false }
+      }
+    },
+
+    "meta": {
+      ".read": "auth != null && auth.token.email == 'admin@washnclean.app'",
+      ".write": "auth != null && auth.token.email == 'admin@washnclean.app'"
+    }
+  }
+}

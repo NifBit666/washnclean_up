@@ -106,7 +106,7 @@ function rfRenderIssues() {
   rfEl("rf-issue-grid").innerHTML = WCU_ISSUES[rf.type].map((i) => {
     const on = rf.issues.has(i.value);
     return `<button type="button" class="rf-issue${on ? " on" : ""}${i.danger ? " danger" : ""}" data-issue="${rfEsc(i.value)}" aria-pressed="${on}">
-      <span class="rf-issue-icon" aria-hidden="true">${i.icon}</span><span>${rfEsc(i.value)}</span></button>`;
+      <span class="rf-issue-icon tone-${i.tone || "slate"}" aria-hidden="true">${WcuIcon.ui(i.icon)}</span><span>${rfEsc(i.value)}</span></button>`;
   }).join("");
   rfEl("rf-money").hidden = rf.type !== "washer";
 }
@@ -286,7 +286,7 @@ function rfOpenReview() {
   const icon = m.category === "iron" ? WcuIcon.iron("", m.status) : WcuIcon.washer("", m.status);
   rfEl("rv-machine").innerHTML = `<span class="rv-icon">${icon}</span><div><strong>${rfEsc(`${RF_LABEL[m.category]} ${m.id}`)}</strong><small>สถานะตอนนี้: ${rfMachineStatusText(m)}</small></div>`;
   const rows = [
-    ["อาการ", [...rf.issues].map((i) => `${wcuIssueIcon(i)} ${i}`).join("\n")],
+    ["อาการ", { html: [...rf.issues].map((i) => `<span class="rv-issue">${wcuIssueIcon(i)}${rfEsc(i)}</span>`).join("") }],
     ["ความรุนแรง", WCU_SEVERITY[rf.severity].label],
     ["พบตอน", rf.when ? WCU_OCCURRED[rf.when] : "ไม่ระบุ"],
   ];
@@ -296,7 +296,7 @@ function rfOpenReview() {
   rows.push(["รหัสนิสิต", rfStudentId()]);
   const contact = rfEl("fb-contact").value.trim();
   if (contact) rows.push(["ติดต่อกลับ", contact]);
-  rfEl("rv-list").innerHTML = rows.map(([k, v]) => `<div><dt>${rfEsc(k)}</dt><dd>${rfEsc(v).replace(/\n/g, "<br>")}</dd></div>`).join("");
+  rfEl("rv-list").innerHTML = rows.map(([k, v]) => `<div><dt>${rfEsc(k)}</dt><dd>${v && v.html ? v.html : rfEsc(v).replace(/\n/g, "<br>")}</dd></div>`).join("");
   rfEl("rv-photos").innerHTML = rf.photos.map((src, i) => `<img src="${src}" alt="รูปที่ ${i + 1}">`).join("");
   rfEl("review-modal").hidden = false;
 }
@@ -400,7 +400,7 @@ async function rfSubmit() {
     <span>หมายเลขการแจ้ง</span><strong>${rfEsc(rfCode(report.id))}</strong>
     <small>${rfEsc(`${RF_LABEL[machine.category]} ${machine.id}`)} · สถานะ: รอตรวจสอบ</small>
     ${busyNote ? `<small>${rfEsc(busyNote)}</small>` : ""}
-    ${cloudNote ? `<small class="warn">⚠ ${rfEsc(cloudNote)}</small>` : ""}`;
+    ${cloudNote ? `<small class="warn">${WcuIcon.ui("alert")} ${rfEsc(cloudNote)}</small>` : ""}`;
   rfEl("success-modal").hidden = false;
   rfReset();
 }
@@ -460,8 +460,8 @@ function rfRenderMine(force = false) {
     const stepIdx = { new: 0, in_progress: 1, resolved: 2 }[status];
     const steps = ["แจ้งแล้ว", "กำลังซ่อม", "ซ่อมเสร็จ"].map((t, i) => `<li class="${i <= stepIdx ? "done" : ""}"><span></span>${t}</li>`).join("");
     const refund = r.refundRequested
-      ? `<p class="rfm-line">💰 ขอคืนเงิน ฿${Number(r.moneyLost) || 0} · ${r.refundStatus === "refunded" ? "<b class=\"ok\">คืนเงินแล้ว</b>" : r.refundStatus === "rejected" ? "<b class=\"no\">ไม่อนุมัติ</b> (ติดต่อแอดมินได้)" : "รอแอดมินดำเนินการ"}</p>` : "";
-    const note = r.adminNote ? `<p class="rfm-note">💬 <b>แอดมิน:</b> ${rfEsc(r.adminNote)}</p>` : "";
+      ? `<p class="rfm-line">${WcuIcon.ui("cash")} ขอคืนเงิน ฿${Number(r.moneyLost) || 0} · ${r.refundStatus === "refunded" ? "<b class=\"ok\">คืนเงินแล้ว</b>" : r.refundStatus === "rejected" ? "<b class=\"no\">ไม่อนุมัติ</b> (ติดต่อแอดมินได้)" : "รอแอดมินดำเนินการ"}</p>` : "";
+    const note = r.adminNote ? `<p class="rfm-note">${WcuIcon.ui("message")} <b>แอดมิน:</b> ${rfEsc(r.adminNote)}</p>` : "";
     const when = status === "resolved" && r.resolvedAt ? ` · เสร็จ ${rfDate(r.resolvedAt)}` : "";
     return `
       <article class="rfm st-${status}">
@@ -471,7 +471,7 @@ function rfRenderMine(force = false) {
           <span class="rfm-pill st-${status}">${RF_STATUS[status]}</span>
         </div>
         <ol class="rfm-track">${steps}</ol>
-        <p class="rfm-line">${(Array.isArray(r.issues) ? r.issues : []).map((i) => `${wcuIssueIcon(i)} ${rfEsc(i)}`).join(" · ") || "ไม่ระบุอาการ"}</p>
+        <p class="rfm-line">${(Array.isArray(r.issues) ? r.issues : []).map((i) => `<span class="rfm-issue">${wcuIssueIcon(i)}${rfEsc(i)}</span>`).join("") || "ไม่ระบุอาการ"}</p>
         ${refund}${note}
       </article>`;
   }).join("");
@@ -514,6 +514,7 @@ function rfTick() {
 
 (function rfBind() {
   rfUpdateCall();
+  document.querySelectorAll("[data-ui-icon]").forEach((el) => { el.innerHTML = WcuIcon.ui(el.dataset.uiIcon); });
   document.querySelectorAll(".rf-type-icon").forEach((el) => { el.innerHTML = el.dataset.icon === "iron" ? WcuIcon.iron() : WcuIcon.washer(); });
 
   document.querySelector(".rf-type-toggle").addEventListener("click", (e) => {

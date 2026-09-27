@@ -42,28 +42,29 @@ const WCU_KEYS = {
 };
 
 /* ---------- ข้อมูลประกอบใบแจ้งซ่อม (ใช้ร่วมกันฝั่งนักศึกษาและแอดมิน) ---------- */
+/* icon = ชื่อไอคอนเส้นใน icons.js (WcuIcon.ui), tone = สีพื้นไอคอนในฟอร์มแจ้งปัญหา */
 const WCU_ISSUES = {
   washer: [
-    { value: "เครื่องไม่ทำงาน", icon: "⛔" },
-    { value: "หยอดเหรียญแล้วเครื่องไม่ทำงาน", icon: "🪙" },
-    { value: "น้ำไม่ไหล", icon: "🚱" },
-    { value: "น้ำไม่ระบาย / น้ำขัง", icon: "🌊" },
-    { value: "ปั่นไม่หมาด", icon: "🌀" },
-    { value: "เครื่องมีเสียงดัง", icon: "🔊" },
-    { value: "น้ำรั่วซึม", icon: "💧" },
-    { value: "ฝาเปิด / ปิดไม่ได้", icon: "🚪" },
-    { value: "มีกลิ่น / ถังสกปรก", icon: "🧽" },
-    { value: "ไฟรั่ว / ไฟช็อต", icon: "⚡", danger: true },
-    { value: "อื่นๆ", icon: "✏️" },
+    { value: "เครื่องไม่ทำงาน", icon: "power", tone: "red" },
+    { value: "หยอดเหรียญแล้วเครื่องไม่ทำงาน", icon: "coin", tone: "amber" },
+    { value: "น้ำไม่ไหล", icon: "drop-off", tone: "blue" },
+    { value: "น้ำไม่ระบาย / น้ำขัง", icon: "tub", tone: "blue" },
+    { value: "ปั่นไม่หมาด", icon: "spin", tone: "indigo" },
+    { value: "เครื่องมีเสียงดัง", icon: "volume", tone: "indigo" },
+    { value: "น้ำรั่วซึม", icon: "drop", tone: "blue" },
+    { value: "ฝาเปิด / ปิดไม่ได้", icon: "lid", tone: "slate" },
+    { value: "มีกลิ่น / ถังสกปรก", icon: "odor", tone: "green" },
+    { value: "ไฟรั่ว / ไฟช็อต", icon: "zap", tone: "red", danger: true },
+    { value: "อื่นๆ", icon: "pencil", tone: "slate" },
   ],
   iron: [
-    { value: "เตารีดไม่ร้อน", icon: "❄️" },
-    { value: "ร้อนเกินไป / ผ้าไหม้", icon: "🔥" },
-    { value: "ปลั๊กหลวม / สายชำรุด", icon: "🔌" },
-    { value: "ไอน้ำไม่ออก / น้ำรั่ว", icon: "💨" },
-    { value: "แผ่นความร้อนสกปรก", icon: "🧽" },
-    { value: "ไฟรั่ว / ไฟช็อต", icon: "⚡", danger: true },
-    { value: "อื่นๆ", icon: "✏️" },
+    { value: "เตารีดไม่ร้อน", icon: "snow", tone: "blue" },
+    { value: "ร้อนเกินไป / ผ้าไหม้", icon: "flame", tone: "orange" },
+    { value: "ปลั๊กหลวม / สายชำรุด", icon: "plug", tone: "indigo" },
+    { value: "ไอน้ำไม่ออก / น้ำรั่ว", icon: "steam", tone: "blue" },
+    { value: "แผ่นความร้อนสกปรก", icon: "sparkle", tone: "green" },
+    { value: "ไฟรั่ว / ไฟช็อต", icon: "zap", tone: "red", danger: true },
+    { value: "อื่นๆ", icon: "pencil", tone: "slate" },
   ],
 };
 const WCU_SEVERITY = {
@@ -73,10 +74,14 @@ const WCU_SEVERITY = {
 };
 const WCU_OCCURRED = { before: "ก่อนเริ่มใช้งาน", during: "ระหว่างใช้งาน", after: "หลังใช้งานเสร็จ" };
 
-function wcuIssueIcon(value) {
-  const all = WCU_ISSUES.washer.concat(WCU_ISSUES.iron);
-  const hit = all.find((i) => i.value === value);
-  return hit ? hit.icon : "•";
+/* ไอคอน SVG ของอาการ (คืนค่าเป็น HTML — ใช้ใน innerHTML เท่านั้น) */
+function wcuIssueInfo(value) {
+  return WCU_ISSUES.washer.concat(WCU_ISSUES.iron).find((i) => i.value === value) || null;
+}
+function wcuIssueIcon(value, cls = "") {
+  const hit = wcuIssueInfo(value);
+  if (typeof WcuIcon === "undefined" || !WcuIcon.ui) return "";
+  return WcuIcon.ui(hit ? hit.icon : "dot", cls);
 }
 function wcuLogEntry(text, by = "admin", at = Date.now()) {
   return { at, by, text };

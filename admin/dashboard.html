@@ -35,7 +35,7 @@
       <div class="segment-control">
         <button class="segment-btn active" data-cat="washer">เครื่องซักผ้า</button>
         <button class="segment-btn" data-cat="iron">เตารีด</button>
-        <button class="segment-btn" data-cat="broken">⚠️ มีปัญหา</button>
+        <button class="segment-btn" data-cat="broken"><span data-ui-icon="alert"></span> มีปัญหา</button>
       </div>
 
       <div class="grid" id="machine-grid"></div>
@@ -56,7 +56,7 @@
       <p class="period-caption" id="rev-period-caption"></p>
 
       <div class="source-banner">
-        <span class="source-icon" aria-hidden="true">🪙</span>
+        <span class="source-icon" aria-hidden="true" data-ui-icon="coin"></span>
         <div class="source-text">
           <strong>รายรับมาจากการหยอดเหรียญในหน้า demo</strong>
           <span>กดหยอดเหรียญ 1 ครั้ง เงินเข้าหน้านี้ทันที (อัปเดตเองทุกวินาที)</span>
@@ -263,7 +263,7 @@
 
       <div class="rep-stats">
         <button type="button" class="rep-stats-toggle" id="rep-stats-toggle" aria-expanded="false" aria-controls="rep-stats-body">
-          <span>📊 สถิติการแจ้งซ่อม</span><span class="chev" aria-hidden="true">▾</span>
+          <span><span data-ui-icon="chart"></span> สถิติการแจ้งซ่อม</span><span class="chev" aria-hidden="true">▾</span>
         </button>
         <div class="rep-stats-body" id="rep-stats-body" hidden>
           <div class="fin-grid">
@@ -527,7 +527,7 @@
           <h4 class="rd-section">ประวัติของเครื่องนี้</h4>
           <div class="rd-history" id="rd-machine-history"></div>
 
-          <h4 class="rd-section rd-section-row">บันทึกการดำเนินการ <button type="button" class="text-btn" id="rd-copy">📋 คัดลอกส่งช่าง</button></h4>
+          <h4 class="rd-section rd-section-row">บันทึกการดำเนินการ <button type="button" class="text-btn" id="rd-copy"><span data-ui-icon="clipboard"></span> คัดลอกส่งช่าง</button></h4>
           <ol class="rd-log" id="rd-log"></ol>
 
           <form id="rd-form" class="modal-form rd-admin">

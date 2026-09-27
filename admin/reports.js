@@ -105,9 +105,9 @@ function repSevBadge(r) {
 function repRefundChip(r) {
   if (!r.refundRequested) return "";
   const amount = formatBaht(Number(r.moneyLost) || 0);
-  if (r.refundStatus === "refunded") return `<span class="refund-chip done">💰 คืนเงินแล้ว ${amount}</span>`;
-  if (r.refundStatus === "rejected") return `<span class="refund-chip muted">💰 ไม่อนุมัติคืนเงิน</span>`;
-  return `<span class="refund-chip">💰 ขอคืนเงิน ${amount}</span>`;
+  if (r.refundStatus === "refunded") return `<span class="refund-chip done">${WcuIcon.ui("cash")} คืนเงินแล้ว ${amount}</span>`;
+  if (r.refundStatus === "rejected") return `<span class="refund-chip muted">${WcuIcon.ui("cash")} ไม่อนุมัติคืนเงิน</span>`;
+  return `<span class="refund-chip">${WcuIcon.ui("cash")} ขอคืนเงิน ${amount}</span>`;
 }
 
 // ใช้ในหน้าต่างตั้งค่าเครื่อง: ใบแจ้งที่ยังไม่ปิดของเครื่องนี้ (ใบล่าสุด)
@@ -171,10 +171,10 @@ function repRenderList(machines) {
   const openUnassigned = all.filter((x) => x.status !== "resolved" && !x.info.name).length;
   const openDanger = all.filter((x) => x.status !== "resolved" && x.r.severity === "danger").length;
   const insights = [];
-  if (openDanger) insights.push(`⚡ มีเคสอันตรายค้าง ${openDanger} ใบ`);
-  if (openUnassigned) insights.push(`⚠ ยังไม่ระบุเครื่อง ${openUnassigned} ใบ`);
-  if (topIssue) insights.push(`อาการที่เจอบ่อยสุด: ${topIssue[0]} (${topIssue[1]} ครั้ง)`);
-  setText("report-insight", insights.join(" · "));
+  if (openDanger) insights.push(`<span class="ins danger">${WcuIcon.ui("zap")}มีเคสอันตรายค้าง ${openDanger} ใบ</span>`);
+  if (openUnassigned) insights.push(`<span class="ins warn">${WcuIcon.ui("alert")}ยังไม่ระบุเครื่อง ${openUnassigned} ใบ</span>`);
+  if (topIssue) insights.push(`<span class="ins">อาการที่เจอบ่อยสุด: ${escapeHtml(topIssue[0])} (${topIssue[1]} ครั้ง)</span>`);
+  document.getElementById("report-insight").innerHTML = insights.join(`<span class="ins-sep">·</span>`);
 
   // --- ตัวกรอง
   const scope = crossStatus ? all : all.filter((x) => x.status === repState.tab);
@@ -183,8 +183,8 @@ function repRenderList(machines) {
     { key: "washer", label: "เครื่องซักผ้า", test: (x) => x.info.category === "washer" && x.info.name },
     { key: "iron", label: "เตารีด", test: (x) => x.info.category === "iron" && x.info.name },
     { key: "unassigned", label: "ยังไม่ระบุเครื่อง", test: (x) => !x.info.name },
-    { key: "danger", label: "⚡ อันตราย", test: (x) => x.r.severity === "danger" },
-    { key: "refund", label: "💰 ขอคืนเงิน", test: (x) => repRefundPending(x.r) },
+    { key: "danger", label: `${WcuIcon.ui("zap")}อันตราย`, test: (x) => x.r.severity === "danger" },
+    { key: "refund", label: `${WcuIcon.ui("cash")}ขอคืนเงิน`, test: (x) => repRefundPending(x.r) },
   ];
   document.getElementById("report-filters").innerHTML = filterDefs
     .map((f) => ({ ...f, count: (f.key === "refund" ? all : scope).filter(f.test).length }))
@@ -208,7 +208,7 @@ function repRenderList(machines) {
   const list = document.getElementById("report-list");
   const note = crossStatus ? `<p class="rep-scope">แสดงผลจากทุกสถานะ · พบ ${shown.length} ใบ <button type="button" class="link-btn" data-clear-scope>ล้างการค้นหา</button></p>` : "";
   if (!shown.length) {
-    const empty = { new: "ไม่มีใบแจ้งซ่อมที่รอตรวจสอบ 🎉", in_progress: "ไม่มีงานที่กำลังซ่อมอยู่", resolved: "ยังไม่มีงานที่ซ่อมเสร็จ" };
+    const empty = { new: "ไม่มีใบแจ้งซ่อมที่รอตรวจสอบ", in_progress: "ไม่มีงานที่กำลังซ่อมอยู่", resolved: "ยังไม่มีงานที่ซ่อมเสร็จ" };
     list.innerHTML = note + `<div class="empty-state">${crossStatus || repState.filter !== "all" ? "ไม่พบใบแจ้งที่ตรงกับเงื่อนไข" : empty[repState.tab]}</div>`;
     return;
   }
@@ -242,7 +242,7 @@ function repRenderKpis(all) {
   alert.hidden = !refunds.length;
   if (refunds.length) {
     const sum = refunds.reduce((a, x) => a + (Number(x.r.moneyLost) || 0), 0);
-    alert.innerHTML = `<span class="ra-icon">💰</span><span class="ra-text"><b>มีคำขอคืนเงินรอดำเนินการ ${refunds.length} ใบ</b><small>รวม ${formatBaht(sum)} · แตะเพื่อดูรายการ</small></span><span class="ra-go">›</span>`;
+    alert.innerHTML = `<span class="ra-icon">${WcuIcon.ui("cash")}</span><span class="ra-text"><b>มีคำขอคืนเงินรอดำเนินการ ${refunds.length} ใบ</b><small>รวม ${formatBaht(sum)} · แตะเพื่อดูรายการ</small></span><span class="ra-go">›</span>`;
   }
 }
 
@@ -321,18 +321,18 @@ function repCardHtml(r, info, index) {
       </div>
       <div class="rc-body">
         <div class="rc-main">
-          <div class="rc-badges">${repSevBadge(r)}${r.occurredWhen && WCU_OCCURRED[r.occurredWhen] ? `<span class="when-badge">🕒 ${WCU_OCCURRED[r.occurredWhen]}</span>` : ""}${repRefundChip(r)}</div>
+          <div class="rc-badges">${repSevBadge(r)}${r.occurredWhen && WCU_OCCURRED[r.occurredWhen] ? `<span class="when-badge">${WcuIcon.ui("clock")}${WCU_OCCURRED[r.occurredWhen]}</span>` : ""}${repRefundChip(r)}</div>
           <div class="report-issues">
             ${issues.length ? issues.map((x) => `<span class="issue-chip${status === "resolved" ? " resolved" : ""}">${wcuIssueIcon(x)} ${escapeHtml(x)}</span>`).join("") : `<span class="issue-chip muted">ไม่ได้ระบุอาการ</span>`}
-            ${info.name ? "" : `<span class="issue-chip warn">⚠ ต้องระบุเครื่อง</span>`}
+            ${info.name ? "" : `<span class="issue-chip warn">${WcuIcon.ui("alert")} ต้องระบุเครื่อง</span>`}
           </div>
           ${extra ? `<p class="rc-extra">“${escapeHtml(extra)}”</p>` : ""}
           ${r.adminNote ? `<p class="rc-note"><strong>แอดมิน:</strong> ${escapeHtml(r.adminNote)}</p>` : ""}
         </div>
-        ${photos.length ? `<span class="rc-thumb-wrap"><img class="rc-thumb" src="${escapeHtml(photos[0])}" alt="รูปหลักฐาน" loading="lazy">${photos.length > 1 ? `<span class="rc-thumb-count">📷 ${photos.length}</span>` : ""}</span>` : ""}
+        ${photos.length ? `<span class="rc-thumb-wrap"><img class="rc-thumb" src="${escapeHtml(photos[0])}" alt="รูปหลักฐาน" loading="lazy">${photos.length > 1 ? `<span class="rc-thumb-count">${WcuIcon.ui("camera")}${photos.length}</span>` : ""}</span>` : ""}
       </div>
       <div class="rc-foot">
-        <span class="rc-meta${late ? " late" : ""}">${student ? `นิสิต ${escapeHtml(student)} · ` : ""}${r.contact ? "📞 · " : ""}${escapeHtml(waited)}${r.repairCost ? ` · ค่าซ่อม ${formatBaht(r.repairCost)}` : ""}</span>
+        <span class="rc-meta${late ? " late" : ""}">${student ? `นิสิต ${escapeHtml(student)} · ` : ""}${r.contact ? `${WcuIcon.ui("phone")} · ` : ""}${escapeHtml(waited)}${r.repairCost ? ` · ค่าซ่อม ${formatBaht(r.repairCost)}` : ""}</span>
         ${quick}
       </div>
     </article>`;
@@ -368,7 +368,7 @@ function openReportDetail(id, opts = {}) {
   const contactEl = document.getElementById("rd-contact");
   const digits = String(r.contact || "").replace(/\D/g, "");
   contactEl.innerHTML = r.contact
-    ? (digits.length >= 9 && !/line/i.test(r.contact) ? `<a href="tel:${digits}">📞 ${escapeHtml(r.contact)}</a>` : escapeHtml(r.contact))
+    ? (digits.length >= 9 && !/line/i.test(r.contact) ? `<a href="tel:${digits}">${WcuIcon.ui("phone")} ${escapeHtml(r.contact)}</a>` : escapeHtml(r.contact))
     : `<span class="muted">ไม่ได้ให้ไว้</span>`;
   setText("rd-time", repDateTime(created));
   setText("rd-ago", status === "resolved" && r.resolvedAt ? `ซ่อมเสร็จใน ${repDuration(repTs(r.resolvedAt) - created)}` : `รอมาแล้ว ${repDuration(Date.now() - created)}`);
@@ -445,7 +445,7 @@ function repRenderGallery(r, info) {
   if (repState.photoIndex >= photos.length) repState.photoIndex = 0;
   if (photos.length) {
     const src = photos[repState.photoIndex];
-    box.innerHTML = `<img src="${escapeHtml(src)}" alt="รูปหลักฐานจากผู้แจ้ง รูปที่ ${repState.photoIndex + 1}"><span class="rd-zoom">🔍 แตะเพื่อขยาย${photos.length > 1 ? ` · ${repState.photoIndex + 1}/${photos.length}` : ""}</span>`;
+    box.innerHTML = `<img src="${escapeHtml(src)}" alt="รูปหลักฐานจากผู้แจ้ง รูปที่ ${repState.photoIndex + 1}"><span class="rd-zoom">${WcuIcon.ui("zoom")} แตะเพื่อขยาย${photos.length > 1 ? ` · ${repState.photoIndex + 1}/${photos.length}` : ""}</span>`;
     box.classList.remove("empty");
     box.dataset.src = src;
   } else {
@@ -465,20 +465,20 @@ function repRenderRefund(r) {
   box.hidden = false;
   box.className = "rd-refund";
   if (!r.refundRequested) {
-    box.innerHTML = `<div class="rr-text"><b>💰 นิสิตแจ้งว่าเสียเงิน ${formatBaht(lost)}</b><small>ไม่ได้ขอคืนเงิน</small></div>`;
+    box.innerHTML = `<div class="rr-text"><b>${WcuIcon.ui("cash")} นิสิตแจ้งว่าเสียเงิน ${formatBaht(lost)}</b><small>ไม่ได้ขอคืนเงิน</small></div>`;
     return;
   }
   const st = r.refundStatus || "pending";
   if (st === "refunded") {
     box.classList.add("done");
-    box.innerHTML = `<div class="rr-text"><b>✓ คืนเงิน ${formatBaht(lost)} ให้นิสิตแล้ว</b><small>${r.refundedAt ? escapeHtml(repDateTime(r.refundedAt)) : ""} · บันทึกในหน้ารายจ่ายแล้ว</small></div>
+    box.innerHTML = `<div class="rr-text"><b>${WcuIcon.ui("check")} คืนเงิน ${formatBaht(lost)} ให้นิสิตแล้ว</b><small>${r.refundedAt ? escapeHtml(repDateTime(r.refundedAt)) : ""} · บันทึกในหน้ารายจ่ายแล้ว</small></div>
       <button type="button" class="rr-btn ghost" data-refund="undo">ยกเลิก</button>`;
   } else if (st === "rejected") {
     box.classList.add("muted");
     box.innerHTML = `<div class="rr-text"><b>ไม่อนุมัติคำขอคืนเงิน ${formatBaht(lost)}</b><small>${r.refundedAt ? escapeHtml(repDateTime(r.refundedAt)) : ""}</small></div>
       <button type="button" class="rr-btn ghost" data-refund="undo">ยกเลิก</button>`;
   } else {
-    box.innerHTML = `<div class="rr-text"><b>💰 นิสิตเสียเงิน ${formatBaht(lost)} และขอคืนเงิน</b><small>หยอดเหรียญแล้วเครื่องใช้งานไม่ได้</small></div>
+    box.innerHTML = `<div class="rr-text"><b>${WcuIcon.ui("cash")} นิสิตเสียเงิน ${formatBaht(lost)} และขอคืนเงิน</b><small>หยอดเหรียญแล้วเครื่องใช้งานไม่ได้</small></div>
       <div class="rr-actions"><button type="button" class="rr-btn" data-refund="refund">คืนเงินแล้ว</button><button type="button" class="rr-btn ghost" data-refund="reject">ไม่อนุมัติ</button></div>`;
   }
 }
@@ -505,7 +505,7 @@ function repUpdateHints() {
   const machineUid = document.getElementById("rd-machine").value;
   const status = repState.draftStatus;
   let hint = "";
-  if (!machineUid) hint = "⚠ ยังไม่ได้ระบุเครื่อง ระบบจะเปลี่ยนสถานะเครื่องให้อัตโนมัติไม่ได้ (ดูเลขเครื่องได้จากรูปหลักฐาน)";
+  if (!machineUid) hint = "ยังไม่ได้ระบุเครื่อง ระบบจะเปลี่ยนสถานะเครื่องให้อัตโนมัติไม่ได้ (ดูเลขเครื่องได้จากรูปหลักฐาน)";
   else if (status === "resolved") hint = "เมื่อบันทึก เครื่องนี้จะกลับมาเปิดให้นักศึกษาใช้งาน";
   else hint = "ระหว่างนี้เครื่องจะแสดงเป็น \"มีปัญหา\" ให้นักศึกษาเห็น";
   setText("rd-machine-hint", hint);

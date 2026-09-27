@@ -165,3 +165,38 @@ const WcuIcon = {
   person: (cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="8.3" r="3.3" stroke="currentColor" stroke-width="1.8"/><path d="M5 19c1-3.6 4-5.4 7-5.4s6 1.8 7 5.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
   bubble: (cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/></svg>`
 };
+
+/* ไอคอนเส้น (แทน emoji) — เส้นหนา 2 ปลายมน สีตาม currentColor ใช้ได้ทุกหน้า */
+const WCU_UI_ICONS = {
+  // อาการเครื่องซักผ้า / เตารีด
+  power: '<path d="M18.4 6.6a9 9 0 1 1-12.8 0"/><path d="M12 2.5v9"/>',
+  coin: '<circle cx="12" cy="12" r="9"/><path d="M14.8 9.3c-.4-1-1.5-1.6-2.8-1.6-1.6 0-2.8.8-2.8 2s1.2 1.7 2.8 2c1.6.3 2.8.9 2.8 2.2s-1.2 2.1-2.8 2.1c-1.4 0-2.5-.7-2.9-1.7"/><path d="M12 5.8v1.9M12 16.3v1.9"/>',
+  "drop-off": '<path d="M12 3.2s5.8 6.3 5.8 10.6a5.8 5.8 0 0 1-11.6 0c0-4.3 5.8-10.6 5.8-10.6z"/><path d="M4 4l16 16"/>',
+  tub: '<path d="M4 4v13a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V4"/><path d="M4 12.5c1.3 0 1.3-1 2.7-1s1.3 1 2.7 1 1.3-1 2.6-1 1.3 1 2.7 1 1.3-1 2.6-1 1.4 1 2.7 1"/>',
+  spin: '<path d="M20.5 12a8.5 8.5 0 0 1-14.9 5.6"/><path d="M3.5 12A8.5 8.5 0 0 1 18.4 6.4"/><path d="M19 2.8v3.8h-3.8"/><path d="M5 21.2v-3.8h3.8"/>',
+  volume: '<path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.6 5.4a9.5 9.5 0 0 1 0 13.2"/>',
+  drop: '<path d="M12 3.2s5.8 6.3 5.8 10.6a5.8 5.8 0 0 1-11.6 0c0-4.3 5.8-10.6 5.8-10.6z"/><path d="M9.3 14.4a2.8 2.8 0 0 0 2.7 2.7"/>',
+  lid: '<rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 7.7-1.6"/><path d="M12 15v2"/>',
+  odor: '<path d="M7 20c-1.8-2.3 1.8-4.2 0-6.5S8.8 9.3 7 7"/><path d="M12 20c-1.8-2.3 1.8-4.2 0-6.5S13.8 9.3 12 7"/><path d="M17 20c-1.8-2.3 1.8-4.2 0-6.5S18.8 9.3 17 7"/>',
+  zap: '<path d="M13 2.5 4.5 13.5H12l-1 8 8.5-11H12l1-8z"/>',
+  pencil: '<path d="M12.5 20H21"/><path d="M16.5 3.6a2.1 2.1 0 0 1 3 3L7.2 18.9 3 20l1.1-4.2L16.5 3.6z"/>',
+  snow: '<path d="M12 2.5v19M3.8 7.3l16.4 9.4M3.8 16.7l16.4-9.4"/><path d="m9.6 4.2 2.4 2.1 2.4-2.1M9.6 19.8l2.4-2.1 2.4 2.1"/>',
+  flame: '<path d="M12 21.5c3.9 0 6.8-2.7 6.8-6.6 0-3.8-2.7-6-3.8-9.4-1.6 1.7-2.6 3-3 4.8-1-.9-1.6-2-1.6-3.6C7.6 8.9 5.2 11.8 5.2 15c0 3.8 2.9 6.5 6.8 6.5z"/>',
+  plug: '<path d="M9 2.5v5.5M15 2.5v5.5"/><path d="M6 8h12v3.5a6 6 0 0 1-12 0V8z"/><path d="M12 17.5v4"/>',
+  steam: '<path d="M8.5 2.8c-1.3 1.3 1.3 2.7 0 4M12.5 2.8c-1.3 1.3 1.3 2.7 0 4M16.5 2.8c-1.3 1.3 1.3 2.7 0 4"/><path d="M3.5 18.5c0-3.9 3.1-7.5 7-7.5H19a1.5 1.5 0 0 1 1.5 1.5v4.5a1.5 1.5 0 0 1-1.5 1.5H3.5z"/><path d="M3.5 21h17"/>',
+  sparkle: '<path d="M11 3.5 12.8 8l4.5 1.8-4.5 1.8L11 16l-1.8-4.4-4.5-1.8L9.2 8 11 3.5z"/><path d="M18 14.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z"/>',
+  // ไอคอนประกอบอื่นๆ
+  alert: '<path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4.2"/><path d="M12 17h.01"/>',
+  cash: '<rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6 12h.01M18 12h.01"/>',
+  message: '<path d="M20.5 14.5a2 2 0 0 1-2 2H8l-4.5 4V5.5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v9z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/>',
+  camera: '<path d="M21.5 18.5a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2H8l1.8-3h4.4L16 6.5h3.5a2 2 0 0 1 2 2v10z"/><circle cx="12" cy="13" r="3.8"/>',
+  phone: '<path d="M21.5 16.9v2.9a2 2 0 0 1-2.2 2 19.6 19.6 0 0 1-8.5-3 19.2 19.2 0 0 1-5.9-5.9 19.6 19.6 0 0 1-3-8.6A2 2 0 0 1 3.9 2h2.9a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L7.8 9.8a16 16 0 0 0 5.9 5.9l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2.2z"/>',
+  zoom: '<circle cx="11" cy="11" r="7"/><path d="m20.5 20.5-4.3-4.3"/><path d="M11 8v6M8 11h6"/>',
+  chart: '<path d="M4 20h16"/><path d="M7 16.5v-5M12 16.5V6M17 16.5v-8"/>',
+  clipboard: '<rect x="8.5" y="2.5" width="7" height="4" rx="1"/><path d="M15.5 4.5h2a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2h2"/><path d="M9 12h6M9 16h4"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  dot: '<circle cx="12" cy="12" r="3" fill="currentColor"/>',
+};
+WcuIcon.ui = (name, cls = "") =>
+  `<svg class="wcu-i${cls ? ` ${cls}` : ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${WCU_UI_ICONS[name] || WCU_UI_ICONS.dot}</svg>`;

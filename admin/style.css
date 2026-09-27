@@ -846,3 +846,23 @@ body {
 /* ปุ่ม + ลอยต้องไม่ทับแถบเมนูล่าง และการ์ดเครื่องแถวสุดท้ายต้องเลื่อนพ้นปุ่มได้ */
 .fab { bottom: 104px; }
 #view-machines { padding-bottom: 76px; }
+
+/* ไอคอนเส้น SVG (แทน emoji) */
+.wcu-i { width: 1.05em; height: 1.05em; vertical-align: -0.17em; flex-shrink: 0; }
+.issue-chip { display: inline-flex; align-items: center; gap: 5px; }
+.report-insight { display: flex; flex-wrap: wrap; align-items: center; row-gap: 2px; }
+.report-insight .ins { display: inline-flex; align-items: center; gap: 4px; }
+.report-insight .ins.danger { color: var(--red); font-weight: 600; }
+.report-insight .ins.warn { color: #b7791f; font-weight: 600; }
+.report-insight .ins-sep { margin: 0 6px; }
+.ra-icon .wcu-i { width: 20px; height: 20px; color: #b7791f; }
+.rc-thumb-count { display: inline-flex; align-items: center; gap: 3px; }
+.rc-thumb-count .wcu-i { width: 11px; height: 11px; }
+.rd-zoom { display: inline-flex; align-items: center; gap: 5px; }
+.source-icon .wcu-i { width: 20px; height: 20px; color: var(--teal-deep); }
+.rep-stats-toggle > span:first-child { display: inline-flex; align-items: center; gap: 6px; }
+.rep-stats-toggle .wcu-i { color: var(--teal-deep); }
+#rd-copy { display: inline-flex; align-items: center; gap: 5px; }
+.hbar-label .wcu-i { color: var(--teal-deep); margin-right: 2px; }
+.segment-btn [data-ui-icon] { display: inline-flex; vertical-align: middle; }
+.rr-text b .wcu-i { vertical-align: -0.15em; }

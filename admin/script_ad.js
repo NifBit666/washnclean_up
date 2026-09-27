@@ -197,6 +197,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 document.addEventListener("DOMContentLoaded", () => {
   if (!document.getElementById("view-machines")) return;
+  // ไอคอนเส้น (SVG) แทน emoji ในส่วนที่เขียนไว้ใน HTML
+  document.querySelectorAll("[data-ui-icon]").forEach((el) => { el.innerHTML = WcuIcon.ui(el.dataset.uiIcon); });
 
   const session = wcuGetSession();
   if (!session) {
@@ -273,7 +275,7 @@ function getRemainingTime(machine) {
   if (machine.status === "broken") return { text: "รอการซ่อม", isFinished: true };
   if (machine.category === "iron") {
     if (machine.status !== "busy") return { text: "ถอดปลั๊กอยู่", isFinished: true };
-    return { text: "เสียบปลั๊กอยู่ ⚡", isFinished: false };
+    return { text: "เสียบปลั๊กอยู่", isFinished: false };
   }
   if (machine.status !== "busy") return { text: "ว่าง", isFinished: true };
 
@@ -342,7 +344,7 @@ function renderMachinesGrid(forceRender = false) {
   }
 
   if (filteredList.length === 0) {
-    container.innerHTML = `<div class="empty-state">${escapeHtml(wcuLoadingText(activeSegment === "broken" ? "ไม่มีเครื่องที่มีปัญหา 🎉" : `ไม่มี${CATEGORY_LABEL[activeSegment]}ในระบบ`))}</div>`;
+    container.innerHTML = `<div class="empty-state">${escapeHtml(wcuLoadingText(activeSegment === "broken" ? "ไม่มีเครื่องที่มีปัญหา" : `ไม่มี${CATEGORY_LABEL[activeSegment]}ในระบบ`))}</div>`;
     container.dataset.sig = "";
     return;
   }
@@ -579,7 +581,7 @@ function setupModals() {
       if (pending && Number(pending.amount) > 0) notes.push(`มีเหรียญค้างในเครื่อง ${formatBaht(pending.amount)}`);
     }
     const name = machine ? `${CATEGORY_LABEL[machine.category]} ${machine.id}` : "เครื่องนี้";
-    setText("delete-desc", `${name} จะถูกลบออกจากระบบอย่างถาวร${notes.length ? ` · ⚠ ${notes.join(" · ")}` : ""} · รายรับและรายจ่ายเดิมยังเก็บไว้`);
+    setText("delete-desc", `${name} จะถูกลบออกจากระบบอย่างถาวร${notes.length ? ` · ${notes.join(" · ")}` : ""} · รายรับและรายจ่ายเดิมยังเก็บไว้`);
     document.getElementById("delete-modal").hidden = false;
   };
 

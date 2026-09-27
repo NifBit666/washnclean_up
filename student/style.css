@@ -613,3 +613,27 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ไอคอนเส้น SVG (แทน emoji) */
+.wcu-i { width: 1.05em; height: 1.05em; vertical-align: -0.18em; flex-shrink: 0; }
+.tone-red { --tone: #e2534a; --tone-soft: #fdecea; }
+.tone-amber { --tone: #c7851a; --tone-soft: #fef5e6; }
+.tone-orange { --tone: #e06a2c; --tone-soft: #fdeee4; }
+.tone-blue { --tone: #1c98b4; --tone-soft: #dff3fa; }
+.tone-indigo { --tone: #5a63c4; --tone-soft: #eef0fb; }
+.tone-green { --tone: #2f9e5d; --tone-soft: #e8f8ef; }
+.tone-slate { --tone: #57628c; --tone-soft: #eef2f7; }
+.rf-issue-icon {
+  width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0; font-size: 1rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--tone-soft, var(--teal-soft)); color: var(--tone, var(--teal-deep)); transition: background 0.2s;
+}
+.rf-issue-icon .wcu-i { width: 18px; height: 18px; vertical-align: 0; }
+.rf-issue.on .rf-issue-icon { background: #fff; }
+.rf-danger-title { display: flex; align-items: center; gap: 6px; }
+.rf-danger-icon { display: inline-flex; }
+.rf-danger-icon .wcu-i { width: 17px; height: 17px; }
+.rv-issue, .rfm-issue { display: inline-flex; align-items: center; gap: 5px; margin: 0 12px 2px 0; }
+.rv-issue .wcu-i, .rfm-issue .wcu-i { color: var(--teal-deep); }
+.rfm-line .wcu-i, .rfm-note .wcu-i { color: var(--teal-deep); }
+.ticket small.warn .wcu-i { color: #b7791f; }

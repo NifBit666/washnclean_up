@@ -33,7 +33,7 @@ function getRemainingTime(machine) {
   
   if (machine.category === "iron") {
     if (machine.status !== "busy") return { text: "ถอดปลั๊กอยู่", isFinished: true };
-    return { text: "เสียบปลั๊กอยู่ ⚡", isFinished: false };
+    return { text: "เสียบปลั๊กอยู่", isFinished: false };
   }
 
   if (machine.status !== "busy") return { text: "ว่าง", isFinished: true };

@@ -198,7 +198,12 @@ body {
 .rv { opacity: 0; transform: translateY(24px) scale(.98); transition: opacity .6s ease var(--d, 0s), transform .7s cubic-bezier(.16, 1, .3, 1) var(--d, 0s); }
 .rv.in { opacity: 1; transform: none; }
 
-.section-badge { display: inline-block; background: #fff; border: 1.5px solid #cfe9f1; color: var(--teal-deep); font-weight: 700; font-size: .85rem; padding: 6px 16px; border-radius: 999px; margin-bottom: 14px; }
+.section-badge {
+  display: inline-block; background: #fff; border: 1.5px solid #cfe9f1; color: var(--teal-deep);
+  /* ฟอนต์หัวข้อเดียวกับชื่อเว็บ: อังกฤษ/ตัวเลขเป็น Baloo 2 ภาษาไทยเป็น IBM Plex Sans Thai */
+  font-family: "Baloo 2", "IBM Plex Sans Thai", sans-serif; font-weight: 700; font-size: .95rem; line-height: 1.5; letter-spacing: .01em;
+  padding: 5px 18px 4px; border-radius: 999px; margin-bottom: 14px;
+}
 .why-head { text-align: center; max-width: 620px; margin: 0 auto 48px; }
 .details-title { font-family: "Baloo 2", "IBM Plex Sans Thai", sans-serif; font-size: 2.2rem; color: var(--navy); margin: 0 0 12px; line-height: 1.25; }
 .why-lead { margin: 0; color: var(--navy-soft); line-height: 1.7; }

@@ -196,6 +196,10 @@ const WCU_UI_ICONS = {
   chart: '<path d="M4 20h16"/><path d="M7 16.5v-5M12 16.5V6M17 16.5v-8"/>',
   clipboard: '<rect x="8.5" y="2.5" width="7" height="4" rx="1"/><path d="M15.5 4.5h2a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2h2"/><path d="M9 12h6M9 16h4"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  "check-circle": '<circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16.5 9.5"/>',
+  "x-circle": '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>',
+  "fast-forward": '<path d="m13 19 8.5-7L13 5v14z"/><path d="m3 19 8.5-7L3 5v14z"/>',
+  sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1.5 14h5M9.5 8h5M17.5 16h5"/>',
   dot: '<circle cx="12" cy="12" r="3" fill="currentColor"/>',
 };
 WcuIcon.ui = (name, cls = "") =>

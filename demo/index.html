@@ -111,12 +111,16 @@
       .demo-summary { grid-template-columns: 1fr 1fr; }
       .sum-item:nth-child(3) { grid-column: 1 / -1; }
     }
+    /* ไอคอนเส้น SVG (แทน emoji) */
+    .wcu-i { width: 1.1em; height: 1.1em; vertical-align: -0.2em; margin-right: 6px; flex-shrink: 0; }
+    .demo-h1-icon .wcu-i { width: 0.95em; height: 0.95em; vertical-align: -0.1em; margin-right: 10px; color: var(--teal); }
+    .d-btn .wcu-i { width: 1em; height: 1em; vertical-align: -0.15em; }
   </style>
 </head>
 <body>
   <div class="demo-container">
     <header class="demo-header">
-      <h1>🎛️ Hardware Simulator</h1>
+      <h1><span class="demo-h1-icon" data-ui-icon="sliders"></span>Hardware Simulator</h1>
       <p style="color:var(--navy-soft); margin-top:-10px;">ระบบจำลองสถานะเครื่องสำหรับโชว์ Demo</p>
     </header>
 
@@ -137,6 +141,7 @@
 
   <div class="demo-toast" id="demo-toast" role="status" hidden></div>
 
+  <script src="../icons.js"></script>
   <script src="../firebase-config.js"></script>
   <script src="../shared-data.js"></script>
   <script src="../firebase-sync.js"></script>
@@ -145,6 +150,13 @@
     const pad2 = (n) => String(n).padStart(2, "0");
     const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     const baht = (n) => `฿${(Number(n) || 0).toLocaleString("th-TH")}`;
+    // ข้อความสถานะ + ไอคอน SVG (เขียนใหม่เฉพาะตอนเปลี่ยน กันไอคอนกระพริบทุกวินาที)
+    function setIconText(el, icon, text) {
+      const key = `${icon}|${text}`;
+      if (el.dataset.key === key) return;
+      el.dataset.key = key;
+      el.innerHTML = `${WcuIcon.ui(icon)}<span>${esc(text)}</span>`;
+    }
     let layoutSignature = "";
     let toastTimer = null;
 
@@ -176,7 +188,7 @@
 
             <div class="btn-group">
               <button type="button" id="btn-coin-${esc(m.uid)}" class="d-btn" data-action="coin" data-uid="${esc(m.uid)}">หยอดเหรียญ 10 บาท</button>
-              <button type="button" id="btn-finish-${esc(m.uid)}" class="d-btn ghost" data-action="finish" data-uid="${esc(m.uid)}" hidden>⏩ ข้ามเวลา (ซักเสร็จทันที)</button>
+              <button type="button" id="btn-finish-${esc(m.uid)}" class="d-btn ghost" data-action="finish" data-uid="${esc(m.uid)}" hidden>${WcuIcon.ui("fast-forward")}ข้ามเวลา (ซักเสร็จทันที)</button>
             </div>
           </div>
         `).join("") : `<div class="empty-demo">${esc(wcuLoadingText("ยังไม่มีเครื่องซักผ้าในระบบ"))}</div>`;
@@ -229,11 +241,12 @@
           document.getElementById(`price-${m.uid}`).textContent = price > 0 ? `ราคา ${baht(price)} / รอบ · ${minutes} นาที` : `ใช้ฟรี · ${minutes} นาที`;
 
           const statusEl = document.getElementById(`status-text-${m.uid}`);
-          if (isBroken) statusEl.textContent = "❌ เครื่องเสีย (มีใบแจ้งซ่อม)";
+          if (isBroken) setIconText(statusEl, "x-circle", "เครื่องเสีย (มีใบแจ้งซ่อม)");
           else if (isBusy) {
             const left = m.startedAt ? Math.max(0, Number(m.startedAt) + wcuMachineDurationMs(m) - now) : 0;
-            statusEl.textContent = `🌀 กำลังทำงาน · เหลือ ${pad2(Math.floor(left / 60000))}:${pad2(Math.floor((left % 60000) / 1000))}`;
-          } else statusEl.textContent = inserted > 0 ? "🪙 กำลังหยอดเหรียญ" : "✅ ว่าง / รอหยอดเหรียญ";
+            setIconText(statusEl, "spin", `กำลังทำงาน · เหลือ ${pad2(Math.floor(left / 60000))}:${pad2(Math.floor((left % 60000) / 1000))}`);
+          } else if (inserted > 0) setIconText(statusEl, "coin", "กำลังหยอดเหรียญ");
+          else setIconText(statusEl, "check-circle", "ว่าง / รอหยอดเหรียญ");
           statusEl.style.color = isBroken ? "var(--red)" : (isBusy ? "var(--teal)" : "var(--navy)");
 
           document.getElementById(`coin-fill-${m.uid}`).style.width = `${isBusy ? 100 : price > 0 ? Math.min(100, (inserted / price) * 100) : 0}%`;
@@ -248,7 +261,9 @@
         } else if (m.category === "iron") {
           art.className = `art-iron ${isBusy ? "is-plugged" : ""}`;
           const ironText = document.getElementById(`iron-text-${m.uid}`);
-          ironText.textContent = isBroken ? "❌ เครื่องเสีย (มีใบแจ้งซ่อม)" : (isBusy ? "⚡ เสียบปลั๊กอยู่" : "🔌 ถอดปลั๊กอยู่");
+          if (isBroken) setIconText(ironText, "x-circle", "เครื่องเสีย (มีใบแจ้งซ่อม)");
+          else if (isBusy) setIconText(ironText, "zap", "เสียบปลั๊กอยู่");
+          else setIconText(ironText, "plug", "ถอดปลั๊กอยู่");
           ironText.style.color = isBroken ? "var(--red)" : (isBusy ? "var(--red)" : "var(--navy)");
 
           const btnPlug = document.getElementById(`btn-plug-${m.uid}`);
@@ -361,6 +376,7 @@
     });
 
     // --- Boot ---
+    document.querySelectorAll("[data-ui-icon]").forEach((el) => { el.innerHTML = WcuIcon.ui(el.dataset.uiIcon); });
     renderLayout();
     setInterval(syncUI, 1000);
   </script>

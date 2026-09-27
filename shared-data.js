@@ -128,9 +128,14 @@ function wcuSeedIfEmpty(force = false) {
   }
   if (!localStorage.getItem(WCU_KEYS.admins)) {
     const admins = [
-      { adminId: "A-01", username: "admin", password: "admin1234", adminTel: "081-234-5678", dormNum: 1 },
+      { adminId: "A-01", username: "admin", password: "admin", adminTel: "081-234-5678", dormNum: 1 },
     ];
     localStorage.setItem(WCU_KEYS.admins, JSON.stringify(admins));
+  } else {
+    // บัญชีทดลองเดิม admin / admin1234 → เปลี่ยนเป็น admin / admin (ไม่แตะบัญชีที่ตั้งรหัสเอง)
+    const admins = wcuGet(WCU_KEYS.admins);
+    const def = admins.find((a) => a.adminId === "A-01" && a.username === "admin" && a.password === "admin1234");
+    if (def) { def.password = "admin"; localStorage.setItem(WCU_KEYS.admins, JSON.stringify(admins)); }
   }
   wcuSeedUsageIfEmpty();
   const seedVersion = localStorage.getItem(WCU_KEYS.seedVersion);

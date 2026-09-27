@@ -544,7 +544,7 @@
   window.wcuCloudUid = () => (cloud.user ? cloud.user.uid : null);
   window.wcuCloudAuthReady = () => authReady;
   window.wcuCloudAdminLogin = function (username, password) {
-    return sdkReady.then(() => auth.signInWithEmailAndPassword(toEmail(username), password)).then((cred) => {
+    return sdkReady.then(() => auth.signInWithEmailAndPassword(toEmail(username), wcuCloudPassword(password))).then((cred) => {
       if (!isAdminUser(cred.user)) {
         return auth.signOut().then(() => {
           const e = new Error("not-admin");
@@ -562,6 +562,14 @@
   document.addEventListener("DOMContentLoaded", setState);
   setState();
 })();
+
+/* Firebase บังคับรหัสผ่านอย่างน้อย 6 ตัว: รหัสที่สั้นกว่านั้น (เช่น "admin") จะถูกต่อท้ายด้วย "-wcu" ก่อนส่ง
+   → พิมพ์ admin ในหน้าเข้าสู่ระบบ = รหัส admin-wcu ใน Firebase Authentication (รหัสยาว 6 ตัวขึ้นไปส่งตามที่พิมพ์) */
+const WCU_SHORT_PASSWORD_SUFFIX = "-wcu";
+function wcuCloudPassword(password) {
+  const p = String(password || "");
+  return p.length < 6 ? p + WCU_SHORT_PASSWORD_SUFFIX : p;
+}
 
 /* ข้อความ error ภาษาไทยที่เข้าใจง่าย */
 function wcuCloudErrorText(err) {
